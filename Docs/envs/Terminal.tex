@@ -1,0 +1,105 @@
+% macshell.tex - Mac-style terminal environment definition
+
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{listings}
+\usepackage{etoolbox}
+
+% Load tcolorbox libraries
+\tcbuselibrary{listings,skins}
+
+% Define macOS window button colors
+\definecolor{macred}{HTML}{FF5F57}
+\definecolor{macyellow}{HTML}{FEBC2E}
+\definecolor{macgreen}{HTML}{28C840}
+
+% Atom One Dark Colors
+\definecolor{atom-bg}{HTML}{282c34}   
+\definecolor{atom-fg}{HTML}{abb2bf}   
+\definecolor{atom-comment}{HTML}{5c6370} 
+\definecolor{atom-keyword}{HTML}{c678dd} 
+\definecolor{atom-string}{HTML}{9c6f35}  
+\definecolor{atom-number}{HTML}{caf291}  
+\definecolor{atom-type}{HTML}{3beb4f}
+\definecolor{atom-notation}{HTML}{b8b848}
+
+% Define Kotlin Language for listings
+\lstdefinelanguage{Kotlin}{
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]",
+  morestring=[s]{"""*}{*"""},
+  morestring=[s]{'''*}{*'''},
+  alsoletter={@}, % Treat @ as part of keywords for annotations
+  morekeywords=[1]{
+    % Kotlin standard keywords
+    abstract, actual, annotation, as, break, by, catch, class, companion,
+    const, constructor, continue, crossinline, data, delegate, do, dynamic,
+    else, enum, expect, external, false, final, finally, for, fun, get, if,
+    import, in, infix, init, inline, inner, interface, internal, is, it,
+    lateinit, noinline, null, object, open, operator, out, override, package,
+    private, protected, public, reified, return, sealed, set, super, suspend,
+    tailrec, this, throw, true, try, typealias, typeof, val, var, vararg,
+    when, where, while,
+  },
+  morekeywords=[2]{
+    % Data Types / Classes (Colored by your custom green: 3beb4f)
+    String, Int, Boolean, Float, Double, Long, Short, Byte, Char,
+    Array, List, Set, Map, Unit, Any, Nothing, Collection, Iterable,
+    % You can add your own custom classes here too!
+    UIState, User, ViewModel, Context, Modifier
+  },
+  morekeywords=[3]{
+    @Composable, @Preview, @OptIn, @JvmStatic, @JvmOverloads
+  },
+  sensitive=true
+}
+
+% Define the Listing Style
+\lstdefinestyle{atom-one-dark}{
+  backgroundcolor  = \color{atom-bg},
+  basicstyle       = \ttfamily\color{atom-fg}\scriptsize,
+  commentstyle     = \color{atom-comment},
+  keywordstyle     = [1]\color{atom-keyword},  % [1] Standard Keywords (Purple)
+  keywordstyle     = [2]\color{atom-type},     % [2] Data Types & Classes (Green)
+  keywordstyle     = [3]\color{atom-notation},
+  stringstyle      = \color{atom-string},
+  numberstyle      = \color{atom-number},
+  frame            = none, 
+  showstringspaces = false,
+  breaklines       = true,
+  columns          = fullflexible,
+  keepspaces       = true,
+}
+
+% USE \newtcblisting instead of \newtcolorbox for code blocks!
+\newtcblisting{macshell}[1][]{
+  enhanced,
+  colback=atom-bg,
+  colframe=atom-bg,
+  boxrule=0pt,
+  arc=3mm,
+  top=20pt,     
+  bottom=5pt,
+  left=10pt,
+  right=10pt,
+  before skip=10pt,
+  after skip=10pt,
+  code={\setLTR}, % <-- MAGIC 1: Forces the box itself to be explicitly Left-to-Right
+  overlay={
+    % Draw window control buttons
+    \node[circle, fill=macred,   minimum size=8pt, inner sep=0pt] at ([xshift=12pt,yshift=-12pt]frame.north west) {};
+    \node[circle, fill=macyellow,minimum size=8pt, inner sep=0pt] at ([xshift=26pt,yshift=-12pt]frame.north west) {};
+    \node[circle, fill=macgreen, minimum size=8pt, inner sep=0pt] at ([xshift=40pt,yshift=-12pt]frame.north west) {};
+  },
+  listing only,
+  listing options={
+    style=atom-one-dark,
+    aboveskip=0pt,
+    belowskip=0pt,
+    resetmargins=true, % <-- MAGIC 2: Tells listings to ignore \begin{description} indentation
+    xleftmargin=0pt,   % Forces text tight against the left edge of the box
+    language=sh,
+    #1
+  }
+}

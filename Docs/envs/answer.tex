@@ -1,0 +1,52 @@
+% ./envs/answer.tex
+% Defines an "answer" environment that produces a blue box with a black outline.
+% Put \input{./envs/answer.tex} in your main.tex preamble (before \begin{document}).
+% Usage:
+%   \begin{answer} This is the answer. \end{answer}
+% or with an optional title:
+%   \begin{answer}[Short title] ... \end{answer}
+
+% Minimal dependencies: xcolor and tcolorbox. tcolorbox is widely available in modern TeX
+% distributions. The box is breakable (works across pages) and accepts an optional title.
+
+\ProvidesFile{answer.tex}[2025/11/17 Answer environment]
+
+% Load required packages
+\RequirePackage{xcolor}
+\RequirePackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+
+% \definecolor{answerblue}{RGB}{190, 255, 230} % green
+\definecolor{answerblue}{RGB}{250, 210, 243} % pink
+% \definecolor{answerblue}{RGB}{240, 185, 117} % Tanish brown
+
+
+% New environment: 'answer'
+% - optional argument: title
+% - breakable so it can span pages
+% - blue background, black frame
+% - a little padding and rounded corners
+\newtcolorbox{answer}[1][]%
+{%
+  enhanced,
+  breakable,
+  width=\textwidth,                    % <--- 1. Force box to full page width
+  enlarge right by={-\dimexpr\textwidth-\linewidth\relax}, % <--- Safe math, no @ symbols! 
+  colback=answerblue,
+  colframe=black,
+  boxrule=0pt,
+  borderline={.8pt}{0pt}{black},% <-- thicker outer border (change 2pt to whatever you like)
+  arc=4pt,
+  left=6pt,
+  right=6pt,
+  top=6pt,
+  bottom=6pt,
+%   sharp corners=southwest,% subtle styling choice; change or remove if you prefer fully rounded
+  boxsep=2pt,
+  frame hidden=false,
+  attach title to upper={yshift=-1mm},
+  fonttitle=\bfseries,
+  title=#1
+}
+
+% End of file
