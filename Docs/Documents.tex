@@ -374,4 +374,21 @@
 \item \lr{Timeout Handling} در صورت گذشت ده دقیقه اگر بلیت \lr{Booked} نشده باشد قفل \lr{Redis} به صورت خودکار آزاد می‌شود در غیر این صورت تایمر بدون تأثیر منقضی می‌شود.
 \end{description}
 
+\section{زیرساخت به عنوان کد \lr{Infrastructure as Code}}
+
+در این بخش معماری زیرساخت ابری پلتفرم با استفاده از اسکریپت‌های \lr{Terraform} مستند شده است. هدف از این رویکرد اتوماسیون استقرار مقیاس‌پذیری سریع در زمان ترافیک بالا و جلوگیری از خطاهای انسانی در پیکربندی سرورها است.
+
+\subsection{تحلیل منابع ابری تخصیص‌یافته}
+
+فایل پیکربندی \lr{main.tf} وظیفه راه‌اندازی خودکار منابع زیر را بر عهده دارد
+
+\begin{description}[font=$\bullet$~\normalsize\scshape]
+\item \lr{Virtual Private Cloud} ایجاد یک شبکه مجازی ایزوله برای تامین امنیت شبکه و محدود کردن دسترسی مستقیم به پایگاه‌های داده.
+\item \lr{Application Load Balancer} استقرار مسیریاب ترافیک در لایه لبه \lr{Edge Layer} برای توزیع متوازن درخواست‌های کاربران بین نودهای پردازشی و جلوگیری از افت کیفیت سرویس.
+\item \lr{Managed Kubernetes Cluster} پیکربندی کلاستر \lr{EKS} جهت مدیریت کانتینرها میکروسرویس‌ها و اعمال مقیاس‌پذیری خودکار \lr{Auto-scaling} در زمان هجوم ترافیک یا همان \lr{Flash Sales}.
+\item \lr{Managed PostgreSQL} راه‌اندازی پایگاه داده رابطه‌ای با قابلیت \lr{Multi-AZ} برای تضمین پایداری داده‌های مالی کاتالوگ رویدادها و دسترسی‌پذیری بالا \lr{High Availability}.
+\item \lr{Redis Cluster} تخصیص کلاستر در حافظه \lr{In-Memory} برای مدیریت سریع قفل‌های توزیع‌شده \lr{Distributed Locks} و جلوگیری از خطای همزمانی درخواست‌ها \lr{Race Conditions}.
+\item \lr{Message Broker} استقرار \lr{RabbitMQ} برای مدیریت صف‌های پیام و تضمین ارتباطات غیرهمزمان \lr{Asynchronous} بین سرویس‌های رزرواسیون پرداخت و اطلاع‌رسانی.
+\end{description}
+
 \end{document}
