@@ -1,6 +1,4 @@
-#!/bin/sh
-'''exec' "/Users/anna/Documents/university/semester 8/sotfware engineering 2/project/SE2_Project/Backend/.venv/bin/python" "$0" "$@"
-' '''
+#!/mnt/D/UNI/T8/Balls2/SE2_Project/Backend/.venv/bin/python
 import sys
 from idna.cli import main
 if __name__ == '__main__':
