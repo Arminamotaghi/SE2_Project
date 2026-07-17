@@ -2,9 +2,9 @@ name: Ticketing Platform CI/CD
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "KaveH", "Armina" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "Armina", "KaveH" ]
 
 jobs:
   test-backend:
