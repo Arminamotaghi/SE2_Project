@@ -1,6 +1,6 @@
 import models
 
-from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi import FastAPI, HTTPException, status, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
@@ -123,25 +123,23 @@ def release_seats(
     )
 
 
-@app.get(
-    "/seats/status",
-    response_model=SeatStatusResponse,
-    tags=["Seats"],
-    summary="Get seat status",
-)
+@app.get("/seats/status", response_model=SeatStatusResponse, tags=["Seats"])
 def get_seats_status(
-    seat_ids: list[str] = Depends(),  # یا از Query استفاده کن
+    seat_ids: list[str] = Query(...),  # از Query استفاده می‌کنیم
     current_user: models.User = Depends(get_current_user),
 ):
+    user_id = str(current_user.id)
     seats: list[SeatStatusItem] = []
 
     for seat_id in seat_ids:
-        status_str = get_seat_status(seat_id)  # AVAILABLE یا LOCKED
+        owner = get_lock_owner(seat_id)
 
-        if status_str == "LOCKED":
-            seat_state = SeatState.LOCKED_BY_OTHER
-        else:
+        if owner is None:
             seat_state = SeatState.AVAILABLE
+        elif owner == user_id:
+            seat_state = SeatState.LOCKED_BY_ME
+        else:
+            seat_state = SeatState.LOCKED_BY_OTHER
 
         seats.append(
             SeatStatusItem(seat_id=seat_id, status=seat_state, reservation_id=None)
