@@ -12,13 +12,10 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
 
     SEAT_LOCK_TTL_SECONDS: int = 600
+
     RABBITMQ_HOST: str = "localhost"
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
 settings = Settings()
