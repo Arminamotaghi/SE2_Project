@@ -10,3 +10,5 @@ pika
 requests
 pytest
 httpx
+fakeredis
+requests
