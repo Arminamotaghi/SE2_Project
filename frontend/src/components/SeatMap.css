@@ -27,16 +27,6 @@
   font-size: clamp(28px, 5vw, 42px);
 }
 
-.current-user {
-  display: inline-block;
-  margin-top: 12px;
-  padding: 7px 12px;
-  color: #4338ca;
-  background: #eef2ff;
-  border-radius: 999px;
-  font-size: 13px;
-}
-
 .message {
   min-height: 24px;
   margin: 14px 0 0;
@@ -100,6 +90,9 @@
 
 .seat-locked-by-me:hover:not(:disabled) {
   transform: translateY(-3px);
+  box-shadow:
+    inset 0 -5px 0 rgba(0, 0, 0, 0.12),
+    0 10px 18px rgba(234, 179, 8, 0.28);
 }
 
 .seat-locked-by-other {
@@ -108,7 +101,7 @@
 }
 
 .seat-booked {
-  background: #8b1e1e;
+  background: #7f1d1d;
   cursor: not-allowed;
 }
 
@@ -125,40 +118,79 @@
   cursor: not-allowed;
 }
 
-.payment-panel {
+.cart-summary {
+  max-width: 540px;
+  margin: 34px auto 0;
+  padding: 22px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+}
+
+.cart-summary-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  max-width: 520px;
-  margin: 32px auto 0;
-  padding: 18px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
+  gap: 18px;
 }
 
-.selected-seat-info {
+.cart-summary-header > div {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 10px;
+}
+
+.cart-label {
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.cart-count {
+  min-width: 32px;
+  padding: 5px 9px;
+  color: #ffffff;
+  background: #4f46e5;
+  border-radius: 999px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.cart-total {
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.selected-seat-list {
+  min-height: 48px;
+  margin-top: 18px;
+  padding: 13px 14px;
+  color: #334155;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.cart-details {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 16px;
   color: #64748b;
   font-size: 13px;
 }
 
-.selected-seat-info strong {
+.cart-details strong {
   color: #0f172a;
-  font-size: 24px;
 }
 
-.payment-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.pay-button,
-.release-button {
+.pay-button {
   padding: 13px 18px;
+  color: #ffffff;
+  background: #4f46e5;
   border: 0;
   border-radius: 10px;
   font-weight: 800;
@@ -168,32 +200,20 @@
     background 160ms ease;
 }
 
-.pay-button {
-  min-width: 180px;
-  color: #ffffff;
-  background: #4f46e5;
-}
-
 .pay-button:hover:not(:disabled) {
   background: #4338ca;
   transform: translateY(-2px);
 }
 
-.release-button {
-  color: #b91c1c;
-  background: #fee2e2;
-}
-
-.release-button:hover:not(:disabled) {
-  background: #fecaca;
-  transform: translateY(-2px);
-}
-
-.pay-button:disabled,
-.release-button:disabled {
+.pay-button:disabled {
   color: #94a3b8;
   background: #e2e8f0;
   cursor: not-allowed;
+}
+
+.pay-all-button {
+  width: 100%;
+  margin-top: 20px;
 }
 
 .sync-status {
@@ -238,7 +258,7 @@
 }
 
 .booked-color {
-  background: #8b1e1e;
+  background: #7f1d1d;
 }
 
 @media (max-width: 600px) {
@@ -256,18 +276,13 @@
     height: 46px;
   }
 
-  .payment-panel {
+  .cart-summary-header,
+  .cart-details {
     flex-direction: column;
-    text-align: center;
+    align-items: flex-start;
   }
 
-  .payment-actions {
-    width: 100%;
-    flex-direction: column;
-  }
-
-  .pay-button,
-  .release-button {
-    width: 100%;
+  .cart-total {
+    font-size: 16px;
   }
 }
