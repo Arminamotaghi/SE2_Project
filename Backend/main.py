@@ -2,8 +2,12 @@ from asyncio import Lock
 
 from fastapi import FastAPI, HTTPException, Query, status
 
+from payment_publisher import publish_payment_success
 from schema import (
+    CheckoutPaymentRequest,
+    CheckoutPaymentResponse,
     ErrorResponse,
+    PaymentStatus,
     SeatActionRequest,
     SeatActionResponse,
     SeatState,
@@ -21,14 +25,18 @@ tags_metadata = [
         "name": "Seats",
         "description": "Seat locking, releasing, and status operations.",
     },
+    {
+        "name": "Checkout",
+        "description": "Payment and checkout operations.",
+    },
 ]
 
 
 app = FastAPI(
     title="Online Ticketing API",
     description=(
-        "API service for locking, releasing, and checking "
-        "the status of ticket seats."
+        "API service for seat reservations, checkout, "
+        "and payment event publishing."
     ),
     version="1.0.0",
     openapi_tags=tags_metadata,
@@ -197,3 +205,44 @@ async def get_seats_status(
         ]
 
     return SeatStatusResponse(seats=seats)
+
+
+@app.post(
+    "/checkout/pay",
+    response_model=CheckoutPaymentResponse,
+    status_code=status.HTTP_200_OK,
+    tags=["Checkout"],
+    summary="Process checkout payment",
+    description=(
+        "Processes a successful payment and publishes "
+        "a payment success event to RabbitMQ."
+    ),
+    responses={
+        status.HTTP_503_SERVICE_UNAVAILABLE: {
+            "model": ErrorResponse,
+            "description": "The payment event could not be published.",
+        },
+    },
+)
+def checkout_pay(
+    payload: CheckoutPaymentRequest,
+) -> CheckoutPaymentResponse:
+    published = publish_payment_success(
+        reservation_id=payload.reservation_id,
+        seat_id=payload.seat_id,
+        user_id=payload.user_id,
+    )
+
+    if not published:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment succeeded, but the event could not be published.",
+        )
+
+    return CheckoutPaymentResponse(
+        message="Payment processed successfully.",
+        reservation_id=payload.reservation_id,
+        seat_id=payload.seat_id,
+        user_id=payload.user_id,
+        status=PaymentStatus.PAID,
+    )
