@@ -30,9 +30,9 @@ export async function getSeatStatuses(seatIds) {
   return response.data;
 }
 
-export async function payForSeat(seatId) {
+export async function payForSeats(seatIds) {
   const response = await apiClient.post("/checkout/pay", {
-    seat_id: seatId,
+    seat_ids: seatIds,
   });
 
   return response.data;

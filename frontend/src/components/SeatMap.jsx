@@ -8,7 +8,7 @@ import axios from "axios";
 import {
   getSeatStatuses,
   lockSeat,
-  payForSeat,
+  payForSeats,
   releaseSeat,
 } from "../api/seatApi";
 import "./SeatMap.css";
@@ -19,6 +19,8 @@ const SEAT_STATUS = {
   LOCKED_BY_OTHER: "LOCKED_BY_OTHER",
   BOOKED: "BOOKED",
 };
+
+const SEAT_PRICE = 150;
 
 const SEAT_IDS = Array.from(
   { length: 25 },
@@ -33,21 +35,34 @@ function createInitialSeats() {
   }));
 }
 
+function getErrorDetail(error, fallbackMessage) {
+  if (!axios.isAxiosError(error)) {
+    return fallbackMessage;
+  }
+
+  const detail = error.response?.data?.detail;
+
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  return fallbackMessage;
+}
+
 function SeatMap() {
   const [seats, setSeats] = useState(createInitialSeats);
+  const [selectedSeats, setSelectedSeats] = useState([]);
   const [message, setMessage] = useState(
-    "Select an available seat."
+    "Select one or more available seats."
   );
-  const [selectedSeatId, setSelectedSeatId] = useState(null);
   const [pendingSeatId, setPendingSeatId] = useState(null);
   const [isPaying, setIsPaying] = useState(false);
-
-  const selectedSeat = seats.find(
-    (seat) => seat.id === selectedSeatId
-  );
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const refreshSeatStatuses = useCallback(
     async (showError = false) => {
+      setIsRefreshing(true);
+
       try {
         const response = await getSeatStatuses(SEAT_IDS);
 
@@ -73,26 +88,25 @@ function SeatMap() {
           })
         );
 
-        setSelectedSeatId((currentSeatId) => {
-          if (!currentSeatId) {
-            return null;
-          }
+        const lockedByMeSeatIds = response.seats
+          .filter(
+            (seat) =>
+              seat.status === SEAT_STATUS.LOCKED_BY_ME
+          )
+          .map((seat) => seat.seat_id);
 
-          const serverSeat = serverSeats.get(currentSeatId);
-
-          if (
-            serverSeat?.status !==
-            SEAT_STATUS.LOCKED_BY_ME
-          ) {
-            return null;
-          }
-
-          return currentSeatId;
-        });
-      } catch {
+        setSelectedSeats(lockedByMeSeatIds);
+      } catch (error) {
         if (showError) {
-          setMessage("Could not refresh seat statuses.");
+          setMessage(
+            getErrorDetail(
+              error,
+              "Could not refresh seat statuses."
+            )
+          );
         }
+      } finally {
+        setIsRefreshing(false);
       }
     },
     []
@@ -110,48 +124,53 @@ function SeatMap() {
     };
   }, [refreshSeatStatuses]);
 
-  const updateSeatLocally = (seatId, changes) => {
+  const updateSeatLocally = (seatId, status) => {
     setSeats((currentSeats) =>
       currentSeats.map((seat) =>
         seat.id === seatId
           ? {
               ...seat,
-              ...changes,
+              status,
             }
           : seat
       )
     );
   };
 
-  const handleSeatClick = async (seat) => {
-    if (pendingSeatId || isPaying) {
-      return;
-    }
+  const addSelectedSeat = (seatId) => {
+    setSelectedSeats((currentSelectedSeats) => {
+      if (currentSelectedSeats.includes(seatId)) {
+        return currentSelectedSeats;
+      }
 
-    if (seat.status === SEAT_STATUS.LOCKED_BY_ME) {
-      setSelectedSeatId(seat.id);
-      setMessage(`${seat.id} is selected for payment.`);
-      return;
-    }
+      return [...currentSelectedSeats, seatId];
+    });
+  };
 
-    if (seat.status !== SEAT_STATUS.AVAILABLE) {
-      return;
-    }
+  const removeSelectedSeat = (seatId) => {
+    setSelectedSeats((currentSelectedSeats) =>
+      currentSelectedSeats.filter(
+        (selectedSeatId) => selectedSeatId !== seatId
+      )
+    );
+  };
 
-    setPendingSeatId(seat.id);
-    setMessage(`Locking ${seat.id}...`);
+  const lockSelectedSeat = async (seatId) => {
+    setPendingSeatId(seatId);
+    setMessage(`Locking ${seatId}...`);
 
     try {
-      await lockSeat(seat.id);
+      await lockSeat(seatId);
 
-      updateSeatLocally(seat.id, {
-        status: SEAT_STATUS.LOCKED_BY_ME,
-      });
+      updateSeatLocally(
+        seatId,
+        SEAT_STATUS.LOCKED_BY_ME
+      );
 
-      setSelectedSeatId(seat.id);
+      addSelectedSeat(seatId);
 
       setMessage(
-        `${seat.id} was locked successfully. You can now pay.`
+        `${seatId} was added to your selected seats.`
       );
 
       await refreshSeatStatuses(false);
@@ -160,11 +179,16 @@ function SeatMap() {
         axios.isAxiosError(error) &&
         error.response?.status === 409
       ) {
-        updateSeatLocally(seat.id, {
-          status: SEAT_STATUS.LOCKED_BY_OTHER,
-        });
+        updateSeatLocally(
+          seatId,
+          SEAT_STATUS.LOCKED_BY_OTHER
+        );
 
-        setMessage(`${seat.id} is not available.`);
+        removeSelectedSeat(seatId);
+
+        setMessage(
+          `${seatId} is locked by another user or already booked.`
+        );
       } else if (
         axios.isAxiosError(error) &&
         error.response?.status === 401
@@ -173,102 +197,37 @@ function SeatMap() {
           "Your session has expired. Please log in again."
         );
       } else {
-        setMessage("Could not lock the seat.");
+        setMessage(
+          getErrorDetail(
+            error,
+            "Could not lock the selected seat."
+          )
+        );
       }
     } finally {
       setPendingSeatId(null);
     }
   };
 
-  const handlePayment = async () => {
-    if (
-      !selectedSeat ||
-      selectedSeat.status !== SEAT_STATUS.LOCKED_BY_ME
-    ) {
-      setMessage("Select one of your locked seats first.");
-      return;
-    }
-
-    setIsPaying(true);
-    setMessage(
-      `Processing payment for ${selectedSeat.id}...`
-    );
+  const releaseSelectedSeat = async (seatId) => {
+    setPendingSeatId(seatId);
+    setMessage(`Releasing ${seatId}...`);
 
     try {
-      await payForSeat(selectedSeat.id);
+      await releaseSeat(seatId);
 
-      updateSeatLocally(selectedSeat.id, {
-        status: SEAT_STATUS.BOOKED,
-      });
+      updateSeatLocally(
+        seatId,
+        SEAT_STATUS.AVAILABLE
+      );
 
-      setSelectedSeatId(null);
-
-      await refreshSeatStatuses(false);
+      removeSelectedSeat(seatId);
 
       setMessage(
-        `Payment completed. ${selectedSeat.id} is now booked.`
+        `${seatId} was removed from your selected seats.`
       );
-    } catch (error) {
-      if (
-        axios.isAxiosError(error) &&
-        error.response?.status === 401
-      ) {
-        setMessage(
-          "Your session has expired. Please log in again."
-        );
-      } else if (
-        axios.isAxiosError(error) &&
-        error.response?.status === 403
-      ) {
-        setMessage(
-          "You no longer own the lock for this seat."
-        );
-      } else if (
-        axios.isAxiosError(error) &&
-        error.response?.status === 409
-      ) {
-        setMessage(
-          "The selected seat is no longer available."
-        );
-      } else if (
-        axios.isAxiosError(error) &&
-        error.response?.status === 503
-      ) {
-        setMessage(
-          "The payment service is currently unavailable."
-        );
-      } else {
-        setMessage("Payment failed. Please try again.");
-      }
 
       await refreshSeatStatuses(false);
-    } finally {
-      setIsPaying(false);
-    }
-  };
-
-  const handleRelease = async () => {
-    if (
-      !selectedSeat ||
-      selectedSeat.status !== SEAT_STATUS.LOCKED_BY_ME
-    ) {
-      setMessage("Select one of your locked seats first.");
-      return;
-    }
-
-    setPendingSeatId(selectedSeat.id);
-    setMessage(`Releasing ${selectedSeat.id}...`);
-
-    try {
-      await releaseSeat(selectedSeat.id);
-
-      setSelectedSeatId(null);
-
-      await refreshSeatStatuses(false);
-
-      setMessage(
-        `${selectedSeat.id} was released successfully.`
-      );
     } catch (error) {
       if (
         axios.isAxiosError(error) &&
@@ -285,10 +244,117 @@ function SeatMap() {
           "You are not allowed to release this seat."
         );
       } else {
-        setMessage("Could not release the seat.");
+        setMessage(
+          getErrorDetail(
+            error,
+            "Could not release the selected seat."
+          )
+        );
       }
+
+      await refreshSeatStatuses(false);
     } finally {
       setPendingSeatId(null);
+    }
+  };
+
+  const handleSeatClick = async (seat) => {
+    if (pendingSeatId || isPaying) {
+      return;
+    }
+
+    if (seat.status === SEAT_STATUS.AVAILABLE) {
+      await lockSelectedSeat(seat.id);
+      return;
+    }
+
+    if (seat.status === SEAT_STATUS.LOCKED_BY_ME) {
+      await releaseSelectedSeat(seat.id);
+    }
+  };
+
+  const handlePayAll = async () => {
+    if (selectedSeats.length === 0) {
+      setMessage(
+        "Select at least one locked seat before payment."
+      );
+      return;
+    }
+
+    const seatsToPay = [...selectedSeats];
+
+    setIsPaying(true);
+
+    setMessage(
+      `Processing payment for ${seatsToPay.length} seat${
+        seatsToPay.length === 1 ? "" : "s"
+      }...`
+    );
+
+    try {
+      await payForSeats(seatsToPay);
+
+      setSeats((currentSeats) =>
+        currentSeats.map((seat) =>
+          seatsToPay.includes(seat.id)
+            ? {
+                ...seat,
+                status: SEAT_STATUS.BOOKED,
+              }
+            : seat
+        )
+      );
+
+      setSelectedSeats([]);
+
+      setMessage(
+        `Payment completed successfully for ${
+          seatsToPay.length
+        } seat${seatsToPay.length === 1 ? "" : "s"}.`
+      );
+
+      await refreshSeatStatuses(false);
+    } catch (error) {
+      if (
+        axios.isAxiosError(error) &&
+        error.response?.status === 401
+      ) {
+        setMessage(
+          "Your session has expired. Please log in again."
+        );
+      } else if (
+        axios.isAxiosError(error) &&
+        error.response?.status === 403
+      ) {
+        setMessage(
+          "You do not own all selected seat locks."
+        );
+      } else if (
+        axios.isAxiosError(error) &&
+        error.response?.status === 409
+      ) {
+        setMessage(
+          "One or more selected seats are no longer available."
+        );
+      } else if (
+        axios.isAxiosError(error) &&
+        error.response?.status === 503
+      ) {
+        setMessage(
+          "The payment service is currently unavailable."
+        );
+      } else {
+        setMessage(
+          getErrorDetail(
+            error,
+            "Payment failed. Please try again."
+          )
+        );
+      }
+
+      await refreshSeatStatuses(false);
+    } finally {
+      setIsPaying(false);
     }
   };
 
@@ -311,11 +377,11 @@ function SeatMap() {
       classNames.push("seat-booked");
     }
 
-    if (seat.id === selectedSeatId) {
+    if (selectedSeats.includes(seat.id)) {
       classNames.push("seat-selected");
     }
 
-    if (seat.id === pendingSeatId) {
+    if (pendingSeatId === seat.id) {
       classNames.push("seat-pending");
     }
 
@@ -333,15 +399,10 @@ function SeatMap() {
     );
   };
 
-  const isPayButtonDisabled =
-    !selectedSeat ||
-    selectedSeat.status !== SEAT_STATUS.LOCKED_BY_ME ||
-    isPaying ||
-    pendingSeatId !== null;
+  const totalPrice = selectedSeats.length * SEAT_PRICE;
 
-  const isReleaseButtonDisabled =
-    !selectedSeat ||
-    selectedSeat.status !== SEAT_STATUS.LOCKED_BY_ME ||
+  const isPayButtonDisabled =
+    selectedSeats.length === 0 ||
     isPaying ||
     pendingSeatId !== null;
 
@@ -367,47 +428,74 @@ function SeatMap() {
             onClick={() => handleSeatClick(seat)}
             disabled={isSeatDisabled(seat)}
             aria-label={`Seat ${seat.number}, ${seat.status}`}
-            aria-pressed={seat.id === selectedSeatId}
+            aria-pressed={selectedSeats.includes(seat.id)}
           >
-            {seat.id === pendingSeatId
+            {pendingSeatId === seat.id
               ? "..."
               : seat.number}
           </button>
         ))}
       </div>
 
-      <div className="payment-panel">
-        <div className="selected-seat-info">
-          <span>Selected seat</span>
+      <div className="cart-summary">
+        <div className="cart-summary-header">
+          <div>
+            <span className="cart-label">
+              Selected seats
+            </span>
 
-          <strong>
-            {selectedSeat ? selectedSeat.number : "None"}
-          </strong>
+            <strong className="cart-count">
+              {selectedSeats.length}
+            </strong>
+          </div>
+
+          <span className="cart-total">
+            {totalPrice.toLocaleString()} Toman
+          </span>
         </div>
 
-        <div className="payment-actions">
-          <button
-            type="button"
-            className="release-button"
-            onClick={handleRelease}
-            disabled={isReleaseButtonDisabled}
-          >
-            Release
-          </button>
-
-          <button
-            type="button"
-            className="pay-button"
-            onClick={handlePayment}
-            disabled={isPayButtonDisabled}
-          >
-            {isPaying
-              ? "Processing..."
-              : selectedSeat
-                ? `Pay for Seat ${selectedSeat.number}`
-                : "Select a Seat to Pay"}
-          </button>
+        <div className="selected-seat-list">
+          {selectedSeats.length > 0
+            ? selectedSeats.join(", ")
+            : "No seats selected"}
         </div>
+
+        <div className="cart-details">
+          <span>
+            Price per seat:
+            {" "}
+            {SEAT_PRICE.toLocaleString()} Toman
+          </span>
+
+          <span>
+            Total:
+            {" "}
+            <strong>
+              {totalPrice.toLocaleString()} Toman
+            </strong>
+          </span>
+        </div>
+
+        <button
+          type="button"
+          className="pay-button pay-all-button"
+          onClick={handlePayAll}
+          disabled={isPayButtonDisabled}
+        >
+          {isPaying
+            ? "Processing Payment..."
+            : selectedSeats.length > 0
+              ? `Pay for ${selectedSeats.length} Seat${
+                  selectedSeats.length === 1 ? "" : "s"
+                }`
+              : "Select Seats to Pay"}
+        </button>
+      </div>
+
+      <div className="sync-status">
+        {isRefreshing
+          ? "Synchronizing seat statuses..."
+          : "Seat statuses are synchronized automatically."}
       </div>
 
       <div className="legend">
