@@ -20,13 +20,13 @@ jobs:
 
     - name: Install dependencies
       run: |
-        cd backend
+        cd Backend
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
     - name: Run Unit Tests (Pytest)
       run: |
-        cd backend
+        cd Backend
         pytest test_main.py -v
 
   verify-docker:
