@@ -175,6 +175,7 @@ def get_seats_status(
         status.HTTP_503_SERVICE_UNAVAILABLE: {"model": ErrorResponse},
     },
 )
+
 @app.post("/checkout/pay", response_model=CheckoutPaymentResponse, tags=["Checkout"])
 async def checkout_pay(
     payload: CheckoutPaymentRequest,
@@ -182,45 +183,48 @@ async def checkout_pay(
     db: Session = Depends(get_db),
 ):
     user_id = str(current_user.id)
-    seat_id = payload.seat_id
 
-    seat_number = int(seat_id.split("-")[-1])
+    # مرحله ۱: اعتبارسنجی همه صندلی‌ها (قبل از پرداخت هیچکدوم)
+    for seat_id in payload.seat_ids:
+        seat_number = int(seat_id.split("-")[-1])
 
-    db_seat = db.query(models.Seat).filter(
-        models.Seat.seat_number == seat_number
-    ).first()
+        # چک BOOKED بودن
+        db_seat = db.query(models.Seat).filter(
+            models.Seat.seat_number == seat_number
+        ).first()
+        if db_seat and db_seat.status == models.SeatStatus.BOOKED:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Seat {seat_id} is already booked.",
+            )
 
-    if db_seat and db_seat.status == models.SeatStatus.BOOKED:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This seat is already booked.",
+        # چک مالکیت قفل
+        owner = get_lock_owner(seat_id)
+        if owner is None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Seat {seat_id} is not locked.",
+            )
+        if owner != user_id:
+            raise HTTPException(
+                status_code=403,
+                detail=f"You do not own seat {seat_id}.",
+            )
+
+    # مرحله ۲: حالا که همه معتبرن، پیام پرداخت همه رو بفرست
+    for seat_id in payload.seat_ids:
+        published = await run_in_threadpool(
+            publish_payment_success, "N/A", seat_id, user_id
         )
-
-    owner = get_lock_owner(seat_id)
-    if owner is None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Seat is not locked or has been released.",
-        )
-    if owner != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not own the lock for this seat.",
-        )
-
-    published = await run_in_threadpool(
-        publish_payment_success, "N/A", seat_id, user_id
-    )
-
-    if not published:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Payment succeeded, but event could not be published.",
-        )
+        if not published:
+            raise HTTPException(
+                status_code=503,
+                detail=f"Payment event failed for {seat_id}.",
+            )
 
     return CheckoutPaymentResponse(
-        message="Payment processed successfully.",
-        seat_id=seat_id,
+        message=f"Payment processed for {len(payload.seat_ids)} seats.",
+        seat_id=", ".join(payload.seat_ids),  # همه صندلی‌ها
         user_id=user_id,
         reservation_id="N/A",
         status=PaymentStatus.PAID,
