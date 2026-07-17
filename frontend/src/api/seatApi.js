@@ -1,35 +1,23 @@
-import axios from "axios";
+import apiClient from "./apiClient";
 
-const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000",
-  timeout: 5000,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-export async function lockSeat(seatId, userId) {
+export async function lockSeat(seatId) {
   const response = await apiClient.post("/seats/lock", {
     seat_ids: [seatId],
-    user_id: userId,
   });
 
   return response.data;
 }
 
-export async function releaseSeat(seatId, userId) {
+export async function releaseSeat(seatId) {
   const response = await apiClient.post("/seats/release", {
     seat_ids: [seatId],
-    user_id: userId,
   });
 
   return response.data;
 }
 
-export async function getSeatStatuses(seatIds, userId) {
+export async function getSeatStatuses(seatIds) {
   const params = new URLSearchParams();
-
-  params.append("user_id", userId);
 
   seatIds.forEach((seatId) => {
     params.append("seat_ids", seatId);
@@ -45,12 +33,10 @@ export async function getSeatStatuses(seatIds, userId) {
 export async function payForSeat({
   reservationId,
   seatId,
-  userId,
 }) {
   const response = await apiClient.post("/checkout/pay", {
     reservation_id: reservationId,
     seat_id: seatId,
-    user_id: userId,
   });
 
   return response.data;
