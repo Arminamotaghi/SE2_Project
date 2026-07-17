@@ -2,7 +2,7 @@ from asyncio import Lock
 
 from fastapi import FastAPI, HTTPException, Query, status
 
-from schemas import (
+from schema import (
     ErrorResponse,
     SeatActionRequest,
     SeatActionResponse,
