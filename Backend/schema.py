@@ -12,6 +12,10 @@ class SeatState(str, Enum):
     LOCKED = "locked"
 
 
+class PaymentStatus(str, Enum):
+    PAID = "PAID"
+
+
 class SeatActionRequest(StrictBaseModel):
     user_id: str = Field(
         ...,
@@ -100,6 +104,81 @@ class SeatStatusResponse(StrictBaseModel):
     seats: list[SeatStatusItem] = Field(
         ...,
         description="Status information for requested seats",
+    )
+
+
+class CheckoutPaymentRequest(StrictBaseModel):
+    reservation_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="Unique reservation identifier",
+        examples=["reservation-123"],
+    )
+
+    seat_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Seat identifier",
+        examples=["A1"],
+    )
+
+    user_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="Unique user identifier",
+        examples=["user-123"],
+    )
+
+    @field_validator(
+        "reservation_id",
+        "seat_id",
+        "user_id",
+    )
+    @classmethod
+    def validate_payment_fields(
+        cls,
+        value: str,
+    ) -> str:
+        normalized_value = value.strip()
+
+        if not normalized_value:
+            raise ValueError("Field cannot be empty.")
+
+        return normalized_value
+
+
+class CheckoutPaymentResponse(StrictBaseModel):
+    message: str = Field(
+        ...,
+        description="Payment result message",
+        examples=["Payment processed successfully."],
+    )
+
+    reservation_id: str = Field(
+        ...,
+        description="Reservation identifier",
+        examples=["reservation-123"],
+    )
+
+    seat_id: str = Field(
+        ...,
+        description="Seat identifier",
+        examples=["A1"],
+    )
+
+    user_id: str = Field(
+        ...,
+        description="User identifier",
+        examples=["user-123"],
+    )
+
+    status: PaymentStatus = Field(
+        ...,
+        description="Payment status",
+        examples=[PaymentStatus.PAID],
     )
 
 
