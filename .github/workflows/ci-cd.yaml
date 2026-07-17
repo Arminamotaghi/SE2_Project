@@ -25,6 +25,19 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run Unit Tests (Pytest)
+      working-directory: ./Backend
+      env:
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+        POSTGRES_USER: test_user
+        POSTGRES_PASSWORD: test_password
+        POSTGRES_DB: test_db
+        POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432
+        SEAT_LOCK_TTL_SECONDS: 600
+        RABBITMQ_HOST: localhost
+        SECRET_KEY: a_dummy_secret_key_for_ci_testing_only
+        ALGORITHM: HS256
       run: |
         cd Backend
         pytest test_main.py -v
