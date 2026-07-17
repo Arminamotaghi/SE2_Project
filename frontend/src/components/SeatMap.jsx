@@ -1,4 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import axios from "axios";
 
 import {
@@ -9,7 +13,6 @@ import {
 } from "../api/seatApi";
 import "./SeatMap.css";
 
-
 const SEAT_STATUS = {
   AVAILABLE: "AVAILABLE",
   LOCKED_BY_ME: "LOCKED_BY_ME",
@@ -17,12 +20,10 @@ const SEAT_STATUS = {
   BOOKED: "BOOKED",
 };
 
-
 const SEAT_IDS = Array.from(
   { length: 25 },
   (_, index) => `SEAT-${index + 1}`
 );
-
 
 function createInitialSeats() {
   return SEAT_IDS.map((seatId, index) => ({
@@ -33,19 +34,7 @@ function createInitialSeats() {
   }));
 }
 
-
-function getCurrentUser() {
-  const searchParams = new URLSearchParams(
-    window.location.search
-  );
-
-  return searchParams.get("user")?.trim() || "armina";
-}
-
-
 function SeatMap() {
-  const currentUser = useMemo(getCurrentUser, []);
-
   const [seats, setSeats] = useState(createInitialSeats);
   const [message, setMessage] = useState(
     "Select an available seat."
@@ -53,7 +42,6 @@ function SeatMap() {
   const [selectedSeatId, setSelectedSeatId] = useState(null);
   const [pendingSeatId, setPendingSeatId] = useState(null);
   const [isPaying, setIsPaying] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const selectedSeat = seats.find(
     (seat) => seat.id === selectedSeatId
@@ -61,13 +49,8 @@ function SeatMap() {
 
   const refreshSeatStatuses = useCallback(
     async (showError = false) => {
-      setIsRefreshing(true);
-
       try {
-        const response = await getSeatStatuses(
-          SEAT_IDS,
-          currentUser
-        );
+        const response = await getSeatStatuses(SEAT_IDS);
 
         const serverSeats = new Map(
           response.seats.map((seat) => [
@@ -93,34 +76,29 @@ function SeatMap() {
           })
         );
 
-        setSelectedSeatId((currentSelectedSeatId) => {
-          if (!currentSelectedSeatId) {
+        setSelectedSeatId((currentSeatId) => {
+          if (!currentSeatId) {
             return null;
           }
 
-          const serverSeat = serverSeats.get(
-            currentSelectedSeatId
-          );
+          const serverSeat = serverSeats.get(currentSeatId);
 
           if (
-            !serverSeat ||
-            serverSeat.status !==
-              SEAT_STATUS.LOCKED_BY_ME
+            serverSeat?.status !==
+            SEAT_STATUS.LOCKED_BY_ME
           ) {
             return null;
           }
 
-          return currentSelectedSeatId;
+          return currentSeatId;
         });
       } catch {
         if (showError) {
           setMessage("Could not refresh seat statuses.");
         }
-      } finally {
-        setIsRefreshing(false);
       }
     },
-    [currentUser]
+    []
   );
 
   useEffect(() => {
@@ -167,10 +145,7 @@ function SeatMap() {
     setMessage(`Locking ${seat.id}...`);
 
     try {
-      const response = await lockSeat(
-        seat.id,
-        currentUser
-      );
+      const response = await lockSeat(seat.id);
 
       const reservationId =
         response.reservation_ids?.[seat.id] || null;
@@ -197,16 +172,9 @@ function SeatMap() {
           reservationId: null,
         });
 
-        setMessage(
-          `${seat.id} is locked by another user or already booked.`
-        );
-      } else if (
-        axios.isAxiosError(error) &&
-        error.code === "ECONNABORTED"
-      ) {
-        setMessage("The server request timed out.");
+        setMessage(`${seat.id} is not available.`);
       } else {
-        setMessage("Could not connect to the server.");
+        setMessage("Could not lock the seat.");
       }
     } finally {
       setPendingSeatId(null);
@@ -225,7 +193,6 @@ function SeatMap() {
     }
 
     setIsPaying(true);
-
     setMessage(
       `Processing payment for ${selectedSeat.id}...`
     );
@@ -234,11 +201,9 @@ function SeatMap() {
       await payForSeat({
         reservationId: selectedSeat.reservationId,
         seatId: selectedSeat.id,
-        userId: currentUser,
       });
 
       setSelectedSeatId(null);
-
       await refreshSeatStatuses(false);
 
       setMessage(
@@ -264,7 +229,7 @@ function SeatMap() {
         error.response?.status === 503
       ) {
         setMessage(
-          "The payment event could not be published."
+          "The payment service is currently unavailable."
         );
       } else {
         setMessage("Payment failed. Please try again.");
@@ -289,26 +254,16 @@ function SeatMap() {
     setMessage(`Releasing ${selectedSeat.id}...`);
 
     try {
-      await releaseSeat(selectedSeat.id, currentUser);
+      await releaseSeat(selectedSeat.id);
 
       setSelectedSeatId(null);
-
       await refreshSeatStatuses(false);
 
       setMessage(
         `${selectedSeat.id} was released successfully.`
       );
-    } catch (error) {
-      if (
-        axios.isAxiosError(error) &&
-        error.response?.status === 403
-      ) {
-        setMessage(
-          "You are not allowed to release this seat."
-        );
-      } else {
-        setMessage("Could not release the seat.");
-      }
+    } catch {
+      setMessage("Could not release the seat.");
     } finally {
       setPendingSeatId(null);
     }
@@ -359,12 +314,7 @@ function SeatMap() {
     <section className="seat-map">
       <header className="seat-map-header">
         <p className="eyebrow">Online Ticketing</p>
-
         <h1>Venue Seat Map</h1>
-
-        <div className="current-user">
-          Current user: <strong>{currentUser}</strong>
-        </div>
 
         <p className="message" aria-live="polite">
           {message}
@@ -396,9 +346,7 @@ function SeatMap() {
           <span>Selected seat</span>
 
           <strong>
-            {selectedSeat
-              ? selectedSeat.number
-              : "None"}
+            {selectedSeat ? selectedSeat.number : "None"}
           </strong>
         </div>
 
@@ -440,12 +388,6 @@ function SeatMap() {
         </div>
       </div>
 
-      <div className="sync-status">
-        {isRefreshing
-          ? "Synchronizing..."
-          : "Seat statuses are synchronized automatically."}
-      </div>
-
       <div className="legend">
         <div className="legend-item">
           <span className="legend-color available-color" />
@@ -470,6 +412,5 @@ function SeatMap() {
     </section>
   );
 }
-
 
 export default SeatMap;

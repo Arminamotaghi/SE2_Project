@@ -1,0 +1,57 @@
+.venue-page {
+  min-height: 100vh;
+  padding: 24px 16px 40px;
+  background: #f1f5f9;
+}
+
+.venue-toolbar {
+  width: min(100%, 700px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 auto 18px;
+  padding: 14px 18px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.venue-toolbar > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.venue-toolbar strong {
+  color: #0f172a;
+}
+
+.venue-user-label {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.logout-button {
+  padding: 10px 16px;
+  color: #b91c1c;
+  background: #fee2e2;
+  border: 0;
+  border-radius: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.logout-button:hover:not(:disabled) {
+  background: #fecaca;
+}
+
+.logout-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.venue-page .seat-map {
+  margin: 0 auto;
+}
