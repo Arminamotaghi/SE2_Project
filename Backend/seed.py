@@ -3,15 +3,13 @@ import models
 
 db = SessionLocal()
 
-# ۱. پاک کردن کامل صندلی‌ها و سالن‌های قبلی (جلوگیری از تکرار)
-print("🗑️ Deleting old data...")
+print("Deleting old data...")
 db.query(models.Reservation).delete()
 db.query(models.Seat).delete()
 db.query(models.Event).delete()
 db.query(models.Venue).delete()
 db.commit()
 
-# ۲. ساخت یک سالن جدید
 venue = models.Venue(name="Main Hall", address="Tehran", total_capacity=25)
 db.add(venue)
 db.commit()

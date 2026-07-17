@@ -106,7 +106,6 @@ def release_seats(
     forbidden_seats = []
 
     for seat_id in payload.seat_ids:
-        # release_seat فقط اگر صاحبش باشی True برمی‌گرداند
         success = release_seat(seat_id, user_id)
         if success:
             released_seats.append(seat_id)
@@ -184,11 +183,9 @@ async def checkout_pay(
 ):
     user_id = str(current_user.id)
 
-    # مرحله ۱: اعتبارسنجی همه صندلی‌ها (قبل از پرداخت هیچکدوم)
     for seat_id in payload.seat_ids:
         seat_number = int(seat_id.split("-")[-1])
 
-        # چک BOOKED بودن
         db_seat = db.query(models.Seat).filter(
             models.Seat.seat_number == seat_number
         ).first()
@@ -198,7 +195,6 @@ async def checkout_pay(
                 detail=f"Seat {seat_id} is already booked.",
             )
 
-        # چک مالکیت قفل
         owner = get_lock_owner(seat_id)
         if owner is None:
             raise HTTPException(
@@ -211,7 +207,6 @@ async def checkout_pay(
                 detail=f"You do not own seat {seat_id}.",
             )
 
-    # مرحله ۲: حالا که همه معتبرن، پیام پرداخت همه رو بفرست
     for seat_id in payload.seat_ids:
         published = await run_in_threadpool(
             publish_payment_success, "N/A", seat_id, user_id
@@ -224,7 +219,7 @@ async def checkout_pay(
 
     return CheckoutPaymentResponse(
         message=f"Payment processed for {len(payload.seat_ids)} seats.",
-        seat_id=", ".join(payload.seat_ids),  # همه صندلی‌ها
+        seat_id=", ".join(payload.seat_ids),  
         user_id=user_id,
         reservation_id="N/A",
         status=PaymentStatus.PAID,

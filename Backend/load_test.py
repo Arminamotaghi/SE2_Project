@@ -3,12 +3,10 @@ import threading
 import uuid
 import time
 
-# --- تنظیمات تست ---
 BASE_URL = "http://localhost:8000"
-CONCURRENT_USERS = 100  # تعداد کاربرانی که همزمان حمله می‌کنند
-TARGET_SEAT_ID = "STRESS-TEST-SEAT-01"  # یک صندلی واحد که همه به آن حمله می‌کنند
+CONCURRENT_USERS = 100  
+TARGET_SEAT_ID = "STRESS-TEST-SEAT-01" 
 
-# شمارنده‌ها برای ثبت نتایج
 results = {"success": 0, "failed": 0, "errors": 0}
 results_lock = threading.Lock()
 

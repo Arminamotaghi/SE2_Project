@@ -18,7 +18,6 @@ class PaymentStatus(str, Enum):
     PAID = "PAID"
 
 
-# --- درخواست قفل/آزادسازی (user_id حذف شد چون از کوکی می‌آید) ---
 class SeatActionRequest(StrictBaseModel):
     seat_ids: list[str] = Field(
         ...,
