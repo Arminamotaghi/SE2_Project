@@ -13,6 +13,8 @@ class Settings(BaseSettings):
 
     SEAT_LOCK_TTL_SECONDS: int = 600
 
+    RABBITMQ_HOST: str = "localhost"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
