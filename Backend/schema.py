@@ -8,8 +8,10 @@ class StrictBaseModel(BaseModel):
 
 
 class SeatState(str, Enum):
-    AVAILABLE = "available"
-    LOCKED = "locked"
+    AVAILABLE = "AVAILABLE"
+    LOCKED_BY_ME = "LOCKED_BY_ME"
+    LOCKED_BY_OTHER = "LOCKED_BY_OTHER"
+    BOOKED = "BOOKED"
 
 
 class PaymentStatus(str, Enum):
@@ -21,16 +23,12 @@ class SeatActionRequest(StrictBaseModel):
         ...,
         min_length=1,
         max_length=100,
-        description="Unique identifier of the user",
-        examples=["user-123"],
     )
 
     seat_ids: list[str] = Field(
         ...,
         min_length=1,
         max_length=50,
-        description="List of seat identifiers",
-        examples=[["A1", "A2"]],
     )
 
     @field_validator("user_id")
@@ -59,89 +57,45 @@ class SeatActionRequest(StrictBaseModel):
 
         return normalized_seat_ids
 
-    model_config = ConfigDict(
-        extra="forbid",
-        json_schema_extra={
-            "examples": [
-                {
-                    "user_id": "user-123",
-                    "seat_ids": ["A1", "A2"],
-                }
-            ]
-        },
-    )
-
 
 class SeatActionResponse(StrictBaseModel):
-    message: str = Field(
-        ...,
-        description="Operation result message",
-        examples=["Seats locked successfully."],
-    )
-
-    seat_ids: list[str] = Field(
-        ...,
-        description="List of affected seat identifiers",
-        examples=[["A1", "A2"]],
-    )
+    message: str
+    seat_ids: list[str]
+    reservation_ids: dict[str, str] = Field(default_factory=dict)
 
 
 class SeatStatusItem(StrictBaseModel):
-    seat_id: str = Field(
-        ...,
-        description="Seat identifier",
-        examples=["A1"],
-    )
-
-    status: SeatState = Field(
-        ...,
-        description="Current seat status",
-        examples=[SeatState.AVAILABLE],
-    )
+    seat_id: str
+    status: SeatState
+    reservation_id: str | None = None
 
 
 class SeatStatusResponse(StrictBaseModel):
-    seats: list[SeatStatusItem] = Field(
-        ...,
-        description="Status information for requested seats",
-    )
+    seats: list[SeatStatusItem]
 
 
 class CheckoutPaymentRequest(StrictBaseModel):
     reservation_id: str = Field(
         ...,
         min_length=1,
-        max_length=100,
-        description="Unique reservation identifier",
-        examples=["reservation-123"],
+        max_length=150,
     )
 
     seat_id: str = Field(
         ...,
         min_length=1,
         max_length=50,
-        description="Seat identifier",
-        examples=["A1"],
     )
 
     user_id: str = Field(
         ...,
         min_length=1,
         max_length=100,
-        description="Unique user identifier",
-        examples=["user-123"],
     )
 
-    @field_validator(
-        "reservation_id",
-        "seat_id",
-        "user_id",
-    )
+    @field_validator("reservation_id", "user_id")
     @classmethod
-    def validate_payment_fields(
-        cls,
-        value: str,
-    ) -> str:
+    def validate_text_fields(cls, value: str) -> str:
         normalized_value = value.strip()
 
         if not normalized_value:
@@ -149,42 +103,24 @@ class CheckoutPaymentRequest(StrictBaseModel):
 
         return normalized_value
 
+    @field_validator("seat_id")
+    @classmethod
+    def validate_seat_id(cls, seat_id: str) -> str:
+        normalized_seat_id = seat_id.strip().upper()
+
+        if not normalized_seat_id:
+            raise ValueError("Seat ID cannot be empty.")
+
+        return normalized_seat_id
+
 
 class CheckoutPaymentResponse(StrictBaseModel):
-    message: str = Field(
-        ...,
-        description="Payment result message",
-        examples=["Payment processed successfully."],
-    )
-
-    reservation_id: str = Field(
-        ...,
-        description="Reservation identifier",
-        examples=["reservation-123"],
-    )
-
-    seat_id: str = Field(
-        ...,
-        description="Seat identifier",
-        examples=["A1"],
-    )
-
-    user_id: str = Field(
-        ...,
-        description="User identifier",
-        examples=["user-123"],
-    )
-
-    status: PaymentStatus = Field(
-        ...,
-        description="Payment status",
-        examples=[PaymentStatus.PAID],
-    )
+    message: str
+    reservation_id: str
+    seat_id: str
+    user_id: str
+    status: PaymentStatus
 
 
 class ErrorResponse(StrictBaseModel):
-    detail: str = Field(
-        ...,
-        description="Error description",
-        examples=["One or more seats are already locked."],
-    )
+    detail: str

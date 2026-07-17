@@ -1,0 +1,273 @@
+.seat-map {
+  width: min(100%, 700px);
+  padding: 40px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.12);
+}
+
+.seat-map-header {
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #6366f1;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.seat-map h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(28px, 5vw, 42px);
+}
+
+.current-user {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 7px 12px;
+  color: #4338ca;
+  background: #eef2ff;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.message {
+  min-height: 24px;
+  margin: 14px 0 0;
+  color: #475569;
+  font-size: 16px;
+}
+
+.stage {
+  width: min(100%, 400px);
+  margin: 0 auto 42px;
+  padding: 14px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #334155, #0f172a);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.2);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-align: center;
+}
+
+.seat-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 56px);
+  justify-content: center;
+  gap: 14px;
+}
+
+.seat {
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px 12px 8px 8px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.12);
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease;
+}
+
+.seat-available {
+  background: #22c55e;
+  cursor: pointer;
+}
+
+.seat-available:hover:not(:disabled) {
+  transform: translateY(-4px);
+  box-shadow:
+    inset 0 -5px 0 rgba(0, 0, 0, 0.12),
+    0 10px 18px rgba(34, 197, 94, 0.28);
+}
+
+.seat-locked-by-me {
+  background: #eab308;
+  cursor: pointer;
+}
+
+.seat-locked-by-me:hover:not(:disabled) {
+  transform: translateY(-3px);
+}
+
+.seat-locked-by-other {
+  background: #ef4444;
+  cursor: not-allowed;
+}
+
+.seat-booked {
+  background: #8b1e1e;
+  cursor: not-allowed;
+}
+
+.seat-selected {
+  outline: 4px solid #6366f1;
+  outline-offset: 4px;
+}
+
+.seat-pending {
+  opacity: 0.55;
+}
+
+.seat:disabled {
+  cursor: not-allowed;
+}
+
+.payment-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 520px;
+  margin: 32px auto 0;
+  padding: 18px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+}
+
+.selected-seat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.selected-seat-info strong {
+  color: #0f172a;
+  font-size: 24px;
+}
+
+.payment-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.pay-button,
+.release-button {
+  padding: 13px 18px;
+  border: 0;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+.pay-button {
+  min-width: 180px;
+  color: #ffffff;
+  background: #4f46e5;
+}
+
+.pay-button:hover:not(:disabled) {
+  background: #4338ca;
+  transform: translateY(-2px);
+}
+
+.release-button {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.release-button:hover:not(:disabled) {
+  background: #fecaca;
+  transform: translateY(-2px);
+}
+
+.pay-button:disabled,
+.release-button:disabled {
+  color: #94a3b8;
+  background: #e2e8f0;
+  cursor: not-allowed;
+}
+
+.sync-status {
+  margin-top: 14px;
+  color: #94a3b8;
+  font-size: 12px;
+  text-align: center;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 24px;
+  color: #475569;
+  font-size: 14px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.available-color {
+  background: #22c55e;
+}
+
+.locked-by-me-color {
+  background: #eab308;
+}
+
+.locked-by-other-color {
+  background: #ef4444;
+}
+
+.booked-color {
+  background: #8b1e1e;
+}
+
+@media (max-width: 600px) {
+  .seat-map {
+    padding: 26px 16px;
+  }
+
+  .seat-grid {
+    grid-template-columns: repeat(5, 46px);
+    gap: 10px;
+  }
+
+  .seat {
+    width: 46px;
+    height: 46px;
+  }
+
+  .payment-panel {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .payment-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .pay-button,
+  .release-button {
+    width: 100%;
+  }
+}
