@@ -18,28 +18,13 @@ class PaymentStatus(str, Enum):
     PAID = "PAID"
 
 
+# --- درخواست قفل/آزادسازی (user_id حذف شد چون از کوکی می‌آید) ---
 class SeatActionRequest(StrictBaseModel):
-    user_id: str = Field(
-        ...,
-        min_length=1,
-        max_length=100,
-    )
-
     seat_ids: list[str] = Field(
         ...,
         min_length=1,
         max_length=50,
     )
-
-    @field_validator("user_id")
-    @classmethod
-    def validate_user_id(cls, user_id: str) -> str:
-        normalized_user_id = user_id.strip()
-
-        if not normalized_user_id:
-            raise ValueError("User ID cannot be empty.")
-
-        return normalized_user_id
 
     @field_validator("seat_ids")
     @classmethod
@@ -61,7 +46,7 @@ class SeatActionRequest(StrictBaseModel):
 class SeatActionResponse(StrictBaseModel):
     message: str
     seat_ids: list[str]
-    reservation_ids: dict[str, str] = Field(default_factory=dict)
+    reservation_ids: dict[str, str] = {}
 
 
 class SeatStatusItem(StrictBaseModel):
@@ -74,34 +59,13 @@ class SeatStatusResponse(StrictBaseModel):
     seats: list[SeatStatusItem]
 
 
+# --- درخواست پرداخت (user_id و reservation_id حذف شدند) ---
 class CheckoutPaymentRequest(StrictBaseModel):
-    reservation_id: str = Field(
-        ...,
-        min_length=1,
-        max_length=150,
-    )
-
     seat_id: str = Field(
         ...,
         min_length=1,
         max_length=50,
     )
-
-    user_id: str = Field(
-        ...,
-        min_length=1,
-        max_length=100,
-    )
-
-    @field_validator("reservation_id", "user_id")
-    @classmethod
-    def validate_text_fields(cls, value: str) -> str:
-        normalized_value = value.strip()
-
-        if not normalized_value:
-            raise ValueError("Field cannot be empty.")
-
-        return normalized_value
 
     @field_validator("seat_id")
     @classmethod
@@ -114,11 +78,12 @@ class CheckoutPaymentRequest(StrictBaseModel):
         return normalized_seat_id
 
 
+# --- پاسخ پرداخت (user_id و reservation_id اختیاری شدند) ---
 class CheckoutPaymentResponse(StrictBaseModel):
     message: str
-    reservation_id: str
     seat_id: str
     user_id: str
+    reservation_id: str = "N/A"
     status: PaymentStatus
 
 

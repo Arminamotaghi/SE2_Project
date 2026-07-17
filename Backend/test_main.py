@@ -32,9 +32,8 @@ def test_lock_seat_successfully():
 def test_prevent_double_locking():
     first_attempt = reservation_service.try_lock_seat("B2", "kaveh")
     second_attempt = reservation_service.try_lock_seat("B2", "armina")
-
-    assert first_attempt is True 
-    assert second_attempt is False 
+    assert first_attempt is True
+    assert second_attempt is False
 
 
 def test_seat_status_changes():
@@ -53,10 +52,31 @@ def test_release_seat_by_owner():
 def test_cannot_release_others_seat():
     reservation_service.try_lock_seat("E5", "kaveh")
     result = reservation_service.release_seat("E5", "armina")
-    assert result is False  # نباید موفق شود
+    assert result is False
 
 
 def test_case_insensitivity():
     reservation_service.try_lock_seat("SEAT-XYZ", "kaveh")
     result = reservation_service.try_lock_seat("seat-xyz", "armina")
-    assert result is False  # باید شکست بخورد چون در واقع همان صندلی است
+    assert result is False
+
+
+def test_get_lock_owner():
+    reservation_service.try_lock_seat("F6", "kaveh")
+    owner = reservation_service.get_lock_owner("F6")
+    assert owner == "kaveh"
+    assert reservation_service.get_lock_owner("G7") is None
+
+def test_lock_requires_authentication():
+    response = client.post("/seats/lock", json={"seat_ids": ["A1"]})
+    assert response.status_code == 401
+
+
+def test_release_requires_authentication():
+    response = client.post("/seats/release", json={"seat_ids": ["A1"]})
+    assert response.status_code == 401
+
+
+def test_checkout_requires_authentication():
+    response = client.post("/checkout/pay", json={"seat_id": "A1"})
+    assert response.status_code == 401

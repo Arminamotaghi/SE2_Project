@@ -39,3 +39,8 @@ def get_seat_status(seat_id: str) -> str:
     if redis_client.exists(lock_key):
         return "LOCKED"
     return "AVAILABLE"
+
+def get_lock_owner(seat_id: str) -> str | None:
+    normalized_id = _normalize_id(seat_id)
+    lock_key = f"seat_lock:{normalized_id}"
+    return redis_client.get(lock_key)

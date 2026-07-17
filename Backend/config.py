@@ -2,18 +2,26 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
+    # --- Redis Configuration ---
+    REDIS_HOST: str
+    REDIS_PORT: int
 
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "postgres"
-    POSTGRES_DB: str = "ticketing"
-    POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: int = 5432
+    # --- PostgreSQL Configuration ---
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
+    POSTGRES_HOST: str
+    POSTGRES_PORT: int
 
-    SEAT_LOCK_TTL_SECONDS: int = 600
+    # --- Business Logic ---
+    SEAT_LOCK_TTL_SECONDS: int
 
-    RABBITMQ_HOST: str = "localhost"
+    # --- RabbitMQ ---
+    RABBITMQ_HOST: str
+
+    # --- Security (JWT) ---
+    SECRET_KEY: str
+    ALGORITHM: str
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

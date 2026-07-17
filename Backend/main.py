@@ -1,7 +1,6 @@
-from asyncio import Lock
-from uuid import uuid4
+import models
 
-from fastapi import FastAPI, HTTPException, Query, status
+from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
@@ -18,57 +17,35 @@ from schema import (
     SeatStatusResponse,
 )
 
+from reservation_service import try_lock_seat, release_seat, get_seat_status, get_lock_owner
+from auth import router as auth_router, get_current_user
+
 
 tags_metadata = [
-    {
-        "name": "System",
-        "description": "System health and availability operations.",
-    },
-    {
-        "name": "Seats",
-        "description": "Seat locking, releasing, and status operations.",
-    },
-    {
-        "name": "Checkout",
-        "description": "Payment and checkout operations.",
-    },
+    {"name": "System", "description": "System health operations."},
+    {"name": "Seats", "description": "Seat locking and status operations."},
+    {"name": "Checkout", "description": "Payment operations."},
 ]
-
 
 app = FastAPI(
     title="Online Ticketing API",
-    description=(
-        "API service for seat reservations, checkout, "
-        "and payment event publishing."
-    ),
+    description="API for seat reservations and checkout.",
     version="1.0.0",
     openapi_tags=tags_metadata,
 )
 
+app.include_router(auth_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-seat_locks: dict[str, str] = {}
-seat_reservations: dict[str, str] = {}
-booked_seats: set[str] = set()
-seat_locks_guard = Lock()
-
-
-@app.get(
-    "/health",
-    tags=["System"],
-    summary="Check API health",
-)
+@app.get("/health", tags=["System"], summary="Check API health")
 async def health_check() -> dict[str, str]:
     return {"status": "We good!"}
 
@@ -76,101 +53,68 @@ async def health_check() -> dict[str, str]:
 @app.post(
     "/seats/lock",
     response_model=SeatActionResponse,
-    status_code=status.HTTP_200_OK,
     tags=["Seats"],
     summary="Lock seats",
-    responses={
-        status.HTTP_409_CONFLICT: {
-            "model": ErrorResponse,
-            "description": "One or more seats are unavailable.",
-        },
-    },
+    responses={status.HTTP_409_CONFLICT: {"model": ErrorResponse}},
 )
-async def lock_seats(
+def lock_seats(
     payload: SeatActionRequest,
-) -> SeatActionResponse:
-    async with seat_locks_guard:
-        conflicting_seats = [
-            seat_id
-            for seat_id in payload.seat_ids
-            if seat_id in booked_seats
-            or (
-                seat_id in seat_locks
-                and seat_locks[seat_id] != payload.user_id
-            )
-        ]
+    current_user: models.User = Depends(get_current_user),
+):
+    user_id = str(current_user.id)
+    locked_seats = []
+    conflicting_seats = []
 
-        if conflicting_seats:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=(
-                    "The following seats are unavailable: "
-                    + ", ".join(conflicting_seats)
-                ),
-            )
+    for seat_id in payload.seat_ids:
+        success = try_lock_seat(seat_id, user_id)
+        if success:
+            locked_seats.append(seat_id)
+        else:
+            conflicting_seats.append(seat_id)
 
-        reservation_ids: dict[str, str] = {}
-
-        for seat_id in payload.seat_ids:
-            seat_locks[seat_id] = payload.user_id
-
-            if seat_id not in seat_reservations:
-                seat_reservations[seat_id] = str(uuid4())
-
-            reservation_ids[seat_id] = seat_reservations[seat_id]
+    if conflicting_seats:
+        for seat_id in locked_seats:
+            release_seat(seat_id, user_id)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The following seats are unavailable: " + ", ".join(conflicting_seats),
+        )
 
     return SeatActionResponse(
         message="Seats locked successfully.",
         seat_ids=payload.seat_ids,
-        reservation_ids=reservation_ids,
+        reservation_ids={},
     )
 
 
 @app.post(
     "/seats/release",
     response_model=SeatActionResponse,
-    status_code=status.HTTP_200_OK,
     tags=["Seats"],
     summary="Release seats",
-    responses={
-        status.HTTP_403_FORBIDDEN: {
-            "model": ErrorResponse,
-            "description": "The user does not own one or more seat locks.",
-        },
-    },
+    responses={status.HTTP_403_FORBIDDEN: {"model": ErrorResponse}},
 )
-async def release_seats(
+def release_seats(
     payload: SeatActionRequest,
-) -> SeatActionResponse:
-    async with seat_locks_guard:
-        forbidden_seats = [
-            seat_id
-            for seat_id in payload.seat_ids
-            if seat_id in booked_seats
-            or (
-                seat_id in seat_locks
-                and seat_locks[seat_id] != payload.user_id
-            )
-        ]
+    current_user: models.User = Depends(get_current_user),
+):
+    user_id = str(current_user.id)
+    released_seats = []
+    forbidden_seats = []
 
-        if forbidden_seats:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=(
-                    "You are not allowed to release these seats: "
-                    + ", ".join(forbidden_seats)
-                ),
-            )
+    for seat_id in payload.seat_ids:
+        # release_seat فقط اگر صاحبش باشی True برمی‌گرداند
+        success = release_seat(seat_id, user_id)
+        if success:
+            released_seats.append(seat_id)
+        else:
+            forbidden_seats.append(seat_id)
 
-        released_seats = [
-            seat_id
-            for seat_id in payload.seat_ids
-            if seat_locks.get(seat_id) == payload.user_id
-        ]
-
-        for seat_id in released_seats:
-            seat_locks.pop(seat_id, None)
-            seat_reservations.pop(seat_id, None)
+    if forbidden_seats:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You cannot release these seats: " + ", ".join(forbidden_seats),
+        )
 
     return SeatActionResponse(
         message="Seats released successfully.",
@@ -182,71 +126,26 @@ async def release_seats(
 @app.get(
     "/seats/status",
     response_model=SeatStatusResponse,
-    status_code=status.HTTP_200_OK,
     tags=["Seats"],
     summary="Get seat status",
 )
-async def get_seats_status(
-    user_id: str = Query(
-        ...,
-        description="Current user identifier",
-    ),
-    seat_ids: list[str] = Query(
-        ...,
-        description="List of seat identifiers",
-    ),
-) -> SeatStatusResponse:
-    normalized_user_id = user_id.strip()
+def get_seats_status(
+    seat_ids: list[str] = Depends(),  # یا از Query استفاده کن
+    current_user: models.User = Depends(get_current_user),
+):
+    seats: list[SeatStatusItem] = []
 
-    normalized_seat_ids = [
-        seat_id.strip().upper()
-        for seat_id in seat_ids
-    ]
+    for seat_id in seat_ids:
+        status_str = get_seat_status(seat_id)  # AVAILABLE یا LOCKED
 
-    if not normalized_user_id:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="User ID cannot be empty.",
+        if status_str == "LOCKED":
+            seat_state = SeatState.LOCKED_BY_OTHER
+        else:
+            seat_state = SeatState.AVAILABLE
+
+        seats.append(
+            SeatStatusItem(seat_id=seat_id, status=seat_state, reservation_id=None)
         )
-
-    if any(not seat_id for seat_id in normalized_seat_ids):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Seat identifiers cannot be empty.",
-        )
-
-    if len(normalized_seat_ids) != len(set(normalized_seat_ids)):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Duplicate seat identifiers are not allowed.",
-        )
-
-    async with seat_locks_guard:
-        seats: list[SeatStatusItem] = []
-
-        for seat_id in normalized_seat_ids:
-            reservation_id = None
-
-            if seat_id in booked_seats:
-                seat_status = SeatState.BOOKED
-
-            elif seat_id not in seat_locks:
-                seat_status = SeatState.AVAILABLE
-
-            elif seat_locks[seat_id] == normalized_user_id:
-                seat_status = SeatState.LOCKED_BY_ME
-                reservation_id = seat_reservations.get(seat_id)
-
-            else:
-                seat_status = SeatState.LOCKED_BY_OTHER
-
-            seats.append(
-                SeatStatusItem(
-                    seat_id=seat_id,
-                    status=seat_status,
-                    reservation_id=reservation_id,
-                )
-            )
 
     return SeatStatusResponse(seats=seats)
 
@@ -254,74 +153,51 @@ async def get_seats_status(
 @app.post(
     "/checkout/pay",
     response_model=CheckoutPaymentResponse,
-    status_code=status.HTTP_200_OK,
     tags=["Checkout"],
     summary="Process checkout payment",
     responses={
-        status.HTTP_403_FORBIDDEN: {
-            "model": ErrorResponse,
-            "description": "The user does not own the seat lock.",
-        },
-        status.HTTP_409_CONFLICT: {
-            "model": ErrorResponse,
-            "description": "The seat is unavailable.",
-        },
-        status.HTTP_503_SERVICE_UNAVAILABLE: {
-            "model": ErrorResponse,
-            "description": "The payment event could not be published.",
-        },
+        status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
+        status.HTTP_409_CONFLICT: {"model": ErrorResponse},
+        status.HTTP_503_SERVICE_UNAVAILABLE: {"model": ErrorResponse},
     },
 )
 async def checkout_pay(
     payload: CheckoutPaymentRequest,
-) -> CheckoutPaymentResponse:
-    async with seat_locks_guard:
-        if payload.seat_id in booked_seats:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="The seat has already been booked.",
-            )
+    current_user: models.User = Depends(get_current_user),
+):
+    user_id = str(current_user.id)
 
-        lock_owner = seat_locks.get(payload.seat_id)
+    lock_owner = get_lock_owner(payload.seat_id)
 
-        if lock_owner != payload.user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You do not own the lock for this seat.",
-            )
-
-        reservation_id = seat_reservations.get(payload.seat_id)
-
-        if reservation_id != payload.reservation_id:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="The reservation does not match the selected seat.",
-            )
-
-        published = await run_in_threadpool(
-            publish_payment_success,
-            payload.reservation_id,
-            payload.seat_id,
-            payload.user_id,
+    if lock_owner is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This seat is not locked or has already been booked.",
         )
 
-        if not published:
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=(
-                    "Payment succeeded, but the event "
-                    "could not be published."
-                ),
-            )
+    if lock_owner != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not own the lock for this seat.",
+        )
 
-        booked_seats.add(payload.seat_id)
-        seat_locks.pop(payload.seat_id, None)
-        seat_reservations.pop(payload.seat_id, None)
+    published = await run_in_threadpool(
+        publish_payment_success,
+        "N/A",
+        payload.seat_id,
+        user_id,
+    )
+
+    if not published:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Payment succeeded, but event could not be published.",
+        )
 
     return CheckoutPaymentResponse(
         message="Payment processed successfully.",
-        reservation_id=payload.reservation_id,
+        reservation_id="N/A",
         seat_id=payload.seat_id,
-        user_id=payload.user_id,
+        user_id=user_id,
         status=PaymentStatus.PAID,
     )

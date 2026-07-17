@@ -12,3 +12,5 @@ pytest
 httpx
 fakeredis
 requests
+python-jose[cryptography]
+passlib[bcrypt]

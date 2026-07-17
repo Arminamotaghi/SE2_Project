@@ -28,6 +28,7 @@ class User(Base):
     email = Column(String(100), unique=True, nullable=False)
     role = Column(Enum(UserRole), default=UserRole.CUSTOMER)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    password_hash = Column(String, nullable=False)
 
 
 class Venue(Base):
@@ -38,7 +39,6 @@ class Venue(Base):
     address = Column(String, nullable=False)
     total_capacity = Column(Integer, nullable=False)
 
-    # ارتباط: هر سالن چندین صندلی و رویداد دارد
     seats = relationship("Seat", back_populates="venue")
     events = relationship("Event", back_populates="venue")
 

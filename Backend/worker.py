@@ -6,34 +6,39 @@ from redis_client import redis_client
 import models
 
 def process_payment_message(ch, method, properties, body):
-    """
-    این تابع هر بار که یک پیام جدید در صف باشد اجرا می‌شود.
-    """
     data = json.loads(body)
-    seat_id = data.get("seat_id")
-    print(f"[Kaveh] Received booking confirmation for seat: {seat_id}")
+    seat_id = data.get("seat_id")  # مثلا "A-1-5"
+    print(f"📥 Received booking for seat: {seat_id}")
 
     db = SessionLocal()
     try:
-        seat = db.query(models.Seat).filter(models.Seat.id == seat_id).first()
+        parts = seat_id.split("-")
+        section = parts[0]      
+        row = parts[1]          
+        number = int(parts[2]) 
+
+        seat = db.query(models.Seat).filter(
+            models.Seat.section_name == section,
+            models.Seat.row_name == row,
+            models.Seat.seat_number == number
+        ).first()
 
         if seat:
             seat.status = models.SeatStatus.BOOKED
             db.commit()
-            print(f"💾 [Kaveh] Seat {seat_id} marked as BOOKED in PostgreSQL.")
+            print(f"💾 Seat {seat_id} marked as BOOKED.")
 
-            lock_key = f"seat_lock:{seat_id}"
-            redis_client.delete(lock_key)
-            print(f"🔓 [Kaveh] Redis lock released for seat {seat_id}.")
+            # آزاد کردن قفل Redis
+            from redis_client import redis_client
+            redis_client.delete(f"seat_lock:{seat_id.lower()}")
+            print(f"🔓 Redis lock released for {seat_id}.")
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
-
     except Exception as e:
-        print(f"Error processing message: {e}")
+        print(f"❌ Error: {e}")
         db.rollback()
     finally:
         db.close()
-
 
 def start_worker():
     print("🚀 [Kaveh] Worker started. Waiting for payment messages...")
