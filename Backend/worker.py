@@ -1,47 +1,52 @@
 import pika
 import json
+import models
+import traceback 
+
 from config import settings
 from database import SessionLocal
 from redis_client import redis_client
-import models
+
 
 def process_payment_message(ch, method, properties, body):
     data = json.loads(body)
-    seat_id = data.get("seat_id")  # مثلا "A-1-5"
-    print(f"📥 Received booking for seat: {seat_id}")
+    seat_id = data.get("seat_id")
+    print(f"Received booking for seat: {seat_id}")
 
     db = SessionLocal()
     try:
-        parts = seat_id.split("-")
-        section = parts[0]      
-        row = parts[1]          
-        number = int(parts[2]) 
+        seat_number = int(seat_id.split("-")[-1])
+        print(f"Looking for seat number: {seat_number}")
 
         seat = db.query(models.Seat).filter(
-            models.Seat.section_name == section,
-            models.Seat.row_name == row,
-            models.Seat.seat_number == number
+            models.Seat.seat_number == seat_number
         ).first()
 
         if seat:
+            print(f"Found seat in DB: {seat.id}") 
             seat.status = models.SeatStatus.BOOKED
             db.commit()
-            print(f"💾 Seat {seat_id} marked as BOOKED.")
+            print(f"Seat {seat_id} marked as BOOKED.")
 
-            # آزاد کردن قفل Redis
             from redis_client import redis_client
             redis_client.delete(f"seat_lock:{seat_id.lower()}")
-            print(f"🔓 Redis lock released for {seat_id}.")
+            print(f"Redis lock released for {seat_id}.")
+        else:
+            print(f"Seat {seat_id} NOT FOUND in database!")
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
+        print(f"Message acknowledged.")  
+
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
+        traceback.print_exc()
         db.rollback()
+        ch.basic_ack(delivery_tag=method.delivery_tag)
     finally:
         db.close()
 
 def start_worker():
-    print("🚀 [Kaveh] Worker started. Waiting for payment messages...")
+    print("Worker started. Waiting for payment messages...")
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host=settings.RABBITMQ_HOST)
     )

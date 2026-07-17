@@ -20,6 +20,9 @@ from schema import (
 from reservation_service import try_lock_seat, release_seat, get_seat_status, get_lock_owner
 from auth import router as auth_router, get_current_user
 
+from database import get_db
+from sqlalchemy.orm import Session
+
 
 tags_metadata = [
     {"name": "System", "description": "System health operations."},
@@ -125,13 +128,26 @@ def release_seats(
 
 @app.get("/seats/status", response_model=SeatStatusResponse, tags=["Seats"])
 def get_seats_status(
-    seat_ids: list[str] = Query(...),  # از Query استفاده می‌کنیم
+    seat_ids: list[str] = Query(...),
     current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     user_id = str(current_user.id)
     seats: list[SeatStatusItem] = []
 
     for seat_id in seat_ids:
+        seat_number = int(seat_id.split("-")[-1])
+
+        db_seat = db.query(models.Seat).filter(
+            models.Seat.seat_number == seat_number
+        ).first()
+
+        if db_seat and db_seat.status == models.SeatStatus.BOOKED:
+            seats.append(
+                SeatStatusItem(seat_id=seat_id, status=SeatState.BOOKED, reservation_id=None)
+            )
+            continue
+
         owner = get_lock_owner(seat_id)
 
         if owner is None:
@@ -159,31 +175,41 @@ def get_seats_status(
         status.HTTP_503_SERVICE_UNAVAILABLE: {"model": ErrorResponse},
     },
 )
+@app.post("/checkout/pay", response_model=CheckoutPaymentResponse, tags=["Checkout"])
 async def checkout_pay(
     payload: CheckoutPaymentRequest,
     current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     user_id = str(current_user.id)
+    seat_id = payload.seat_id
 
-    lock_owner = get_lock_owner(payload.seat_id)
+    seat_number = int(seat_id.split("-")[-1])
 
-    if lock_owner is None:
+    db_seat = db.query(models.Seat).filter(
+        models.Seat.seat_number == seat_number
+    ).first()
+
+    if db_seat and db_seat.status == models.SeatStatus.BOOKED:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="This seat is not locked or has already been booked.",
+            detail="This seat is already booked.",
         )
 
-    if lock_owner != user_id:
+    owner = get_lock_owner(seat_id)
+    if owner is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Seat is not locked or has been released.",
+        )
+    if owner != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not own the lock for this seat.",
         )
 
     published = await run_in_threadpool(
-        publish_payment_success,
-        "N/A",
-        payload.seat_id,
-        user_id,
+        publish_payment_success, "N/A", seat_id, user_id
     )
 
     if not published:
@@ -194,8 +220,8 @@ async def checkout_pay(
 
     return CheckoutPaymentResponse(
         message="Payment processed successfully.",
-        reservation_id="N/A",
-        seat_id=payload.seat_id,
+        seat_id=seat_id,
         user_id=user_id,
+        reservation_id="N/A",
         status=PaymentStatus.PAID,
     )
