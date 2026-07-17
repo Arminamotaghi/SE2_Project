@@ -1,9 +1,8 @@
 from asyncio import Lock
-from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, Query, status
 
-from schema import (
+from schemas import (
     ErrorResponse,
     SeatActionRequest,
     SeatActionResponse,
@@ -162,14 +161,10 @@ async def release_seats(
     ),
 )
 async def get_seats_status(
-    seat_ids: Annotated[
-        list[str],
-        Query(
-            min_length=1,
-            description="List of seat identifiers",
-            examples=["A1", "A2"],
-        ),
-    ],
+    seat_ids: list[str] = Query(
+        ...,
+        description="List of seat identifiers",
+    ),
 ) -> SeatStatusResponse:
     normalized_seat_ids = [
         seat_id.strip().upper()
