@@ -25,7 +25,6 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run Unit Tests (Pytest)
-      working-directory: ./Backend
       env:
         REDIS_HOST: localhost
         REDIS_PORT: 6379
