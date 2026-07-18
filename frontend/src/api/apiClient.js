@@ -17,6 +17,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem("ticketing_authenticated");
       localStorage.removeItem("ticketing_username");
+      localStorage.removeItem("ticketing_role");
 
       const publicPaths = ["/login", "/register"];
 
