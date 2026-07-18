@@ -80,3 +80,8 @@ def test_release_requires_authentication():
 def test_checkout_requires_authentication():
     response = client.post("/checkout/pay", json={"seat_id": "A1"})
     assert response.status_code == 401
+
+
+def test_admin_dashboard_requires_auth():
+    response = client.get("/admin/dashboard")
+    assert response.status_code == 401

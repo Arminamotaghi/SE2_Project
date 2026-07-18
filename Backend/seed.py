@@ -1,5 +1,7 @@
-from database import SessionLocal
 import models
+
+from database import SessionLocal
+from security import get_password_hash
 
 db = SessionLocal()
 
@@ -30,4 +32,15 @@ for num in range(1, 26):
 
 db.commit()
 print(f"Created 25 seats (numbered 1-25) successfully!")
+
+admin_user = models.User(
+    username="admin",
+    email="admin@test.com",
+    password_hash=get_password_hash("admin123"),
+    role=models.UserRole.ADMIN
+)
+db.add(admin_user)
+db.commit()
+print("Admin created (username: admin, password: admin123)")
+
 db.close()

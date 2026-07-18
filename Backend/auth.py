@@ -18,7 +18,7 @@ def register(user: UserCredentials, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Username already exists")
 
     hashed_pw = get_password_hash(user.password)
-    new_user = models.User(username=user.username, email=f"{user.username}@test.com", password_hash=hashed_pw)
+    new_user = models.User(username=user.username, email=f"{user.username}@test.com", password_hash=hashed_pw, role=models.UserRole.CUSTOMER)
     db.add(new_user)
     db.commit()
     return {"message": "User registered successfully"}
@@ -29,17 +29,23 @@ def login(user: UserCredentials, response: Response, db: Session = Depends(get_d
     if not db_user or not verify_password(user.password, db_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    token = create_access_token(data={"sub": str(db_user.id), "username": db_user.username})
+    token = create_access_token(data={
+        "sub": str(db_user.id),
+        "username": db_user.username,
+        "role": db_user.role.value  
+    })
 
     response.set_cookie(
-        key="access_token",
-        value=token,
-        httponly=True,      
-        secure=False,       
-        samesite="lax",      
+        key="access_token", value=token, httponly=True,
+        secure=False, samesite="lax", max_age=3600
     )
-    return {"message": "Login successful", "username": db_user.username}
 
+    return {
+        "message": "Login successful",
+        "username": db_user.username,
+        "role": db_user.role.value  
+    }
+    
 @router.post("/logout")
 def logout(response: Response):
     response.delete_cookie("access_token")
@@ -59,3 +65,20 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     return user
+
+
+@router.get("/me")
+def get_me(current_user: models.User = Depends(get_current_user)):
+    return {
+        "id": str(current_user.id),
+        "username": current_user.username,
+        "role": current_user.role.value
+    }
+
+def require_admin(current_user: models.User = Depends(get_current_user)):
+    if current_user.role != models.UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required."
+        )
+    return current_user

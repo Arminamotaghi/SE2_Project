@@ -18,7 +18,7 @@ from schema import (
 )
 
 from reservation_service import try_lock_seat, release_seat, get_seat_status, get_lock_owner
-from auth import router as auth_router, get_current_user
+from auth import router as auth_router, get_current_user, require_admin
 
 from database import get_db
 from sqlalchemy.orm import Session
@@ -224,3 +224,22 @@ async def checkout_pay(
         reservation_id="N/A",
         status=PaymentStatus.PAID,
     )
+
+@app.get("/admin/dashboard", tags=["Admin"])
+def admin_dashboard(
+    admin: models.User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    total_seats = db.query(models.Seat).count()
+    booked_seats = db.query(models.Seat).filter(
+        models.Seat.status == models.SeatStatus.BOOKED
+    ).count()
+    available_seats = total_seats - booked_seats
+
+    return {
+        "total_seats": total_seats,       
+        "booked_seats": booked_seats,     
+        "available_seats": available_seats,
+        "revenue": booked_seats * 150,    
+        "occupancy_rate": round(booked_seats / total_seats * 100, 1) if total_seats else 0,  # آرمینا این را می‌خواند
+    }
