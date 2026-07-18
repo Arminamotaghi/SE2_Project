@@ -5,14 +5,19 @@ import {
 } from "react-router-dom";
 
 import { useAuth } from "./auth/AuthContext";
+import AdminRoute from "./components/AdminRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminDashboard from "./pages/AdminDashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import VenuePage from "./pages/VenuePage";
 import "./App.css";
 
 function App() {
-  const { isAuthenticated } = useAuth();
+  const {
+    isAuthenticated,
+    isAdmin,
+  } = useAuth();
 
   return (
     <Routes>
@@ -20,7 +25,12 @@ function App() {
         path="/login"
         element={
           isAuthenticated
-            ? <Navigate to="/" replace />
+            ? (
+              <Navigate
+                to={isAdmin ? "/admin" : "/"}
+                replace
+              />
+            )
             : <Login />
         }
       />
@@ -29,7 +39,12 @@ function App() {
         path="/register"
         element={
           isAuthenticated
-            ? <Navigate to="/" replace />
+            ? (
+              <Navigate
+                to={isAdmin ? "/admin" : "/"}
+                replace
+              />
+            )
             : <Register />
         }
       />
@@ -44,10 +59,25 @@ function App() {
       />
 
       <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminDashboard />
+          </AdminRoute>
+        }
+      />
+
+      <Route
         path="*"
         element={
           <Navigate
-            to={isAuthenticated ? "/" : "/login"}
+            to={
+              isAuthenticated
+                ? isAdmin
+                  ? "/admin"
+                  : "/"
+                : "/login"
+            }
             replace
           />
         }

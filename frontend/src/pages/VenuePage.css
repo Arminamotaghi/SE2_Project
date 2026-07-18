@@ -18,14 +18,10 @@
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
 }
 
-.venue-toolbar > div {
+.venue-user {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.venue-toolbar strong {
-  color: #0f172a;
+  gap: 3px;
 }
 
 .venue-user-label {
@@ -33,14 +29,53 @@
   font-size: 12px;
 }
 
+.venue-user-details {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.venue-user-details strong {
+  color: #0f172a;
+}
+
+.venue-role {
+  padding: 3px 8px;
+  color: #4338ca;
+  background: #eef2ff;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.venue-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-panel-button,
 .logout-button {
   padding: 10px 16px;
-  color: #b91c1c;
-  background: #fee2e2;
   border: 0;
   border-radius: 9px;
   font-weight: 800;
   cursor: pointer;
+}
+
+.admin-panel-button {
+  color: #4338ca;
+  background: #eef2ff;
+}
+
+.admin-panel-button:hover {
+  background: #e0e7ff;
+}
+
+.logout-button {
+  color: #b91c1c;
+  background: #fee2e2;
 }
 
 .logout-button:hover:not(:disabled) {
@@ -54,4 +89,19 @@
 
 .venue-page .seat-map {
   margin: 0 auto;
+}
+
+@media (max-width: 560px) {
+  .venue-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .venue-toolbar-actions {
+    width: 100%;
+  }
+
+  .venue-toolbar-actions button {
+    flex: 1;
+  }
 }

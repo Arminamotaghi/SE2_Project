@@ -7,7 +7,14 @@ import "./VenuePage.css";
 
 function VenuePage() {
   const navigate = useNavigate();
-  const { username, logout } = useAuth();
+
+  const {
+    username,
+    role,
+    isAdmin,
+    logout,
+  } = useAuth();
+
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -24,19 +31,42 @@ function VenuePage() {
   return (
     <main className="venue-page">
       <header className="venue-toolbar">
-        <div>
-          <span className="venue-user-label">Signed in as</span>
-          <strong>{username}</strong>
+        <div className="venue-user">
+          <span className="venue-user-label">
+            Signed in as
+          </span>
+
+          <div className="venue-user-details">
+            <strong>{username}</strong>
+
+            <span className="venue-role">
+              {role}
+            </span>
+          </div>
         </div>
 
-        <button
-          type="button"
-          className="logout-button"
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-        >
-          {isLoggingOut ? "Logging Out..." : "Logout"}
-        </button>
+        <nav className="venue-toolbar-actions">
+          {isAdmin && (
+            <button
+              type="button"
+              className="admin-panel-button"
+              onClick={() => navigate("/admin")}
+            >
+              Admin Panel
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="logout-button"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+          >
+            {isLoggingOut
+              ? "Logging Out..."
+              : "Logout"}
+          </button>
+        </nav>
       </header>
 
       <SeatMap />
