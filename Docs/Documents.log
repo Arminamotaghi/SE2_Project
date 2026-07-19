@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999998 (TeX Live 2026/Arch Linux) (preloaded format=xelatex 2026.7.8)  16 JUL 2026 20:12
+This is XeTeX, Version 3.141592653-2.6-0.999998 (TeX Live 2026/Arch Linux) (preloaded format=xelatex 2026.7.8)  20 JUL 2026 00:25
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1347,22 +1347,20 @@ File: images/AUTlogo.png Graphic file (type bmp)
 LaTeX Font Warning: Font shape `TU/BNazanin(0)/b/sc' undefined
 (Font)              using `TU/BNazanin(0)/b/n' instead on input line 85.
 
-[2] [3]
+[2]
 File: ./images/usecase.png Graphic file (type bmp)
 <./images/usecase.png>
 
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-[4]
 File: ./images/sequence.png Graphic file (type bmp)
 <./images/sequence.png>
 
-
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-[5]
-Overfull \hbox (26.1394pt too wide) in paragraph at lines 265--266
+[3]
+Overfull \hbox (26.1394pt too wide) in paragraph at lines 196--197
 [][][]\TU/Times(0)/m/n/10 Payment Failed[] \TU/BNazanin(0)/m/n/10 در صورت شکست 
 یا []\TU/Times(0)/m/n/10 Timeout[] \TU/BNazanin(0)/m/n/10 رویداد []\TU/Times(0)
 /m/n/10 PaymentFailed[] \TU/BNazanin(0)/m/n/10 منتشر شده و []\TU/Times(0)/m/n/1
@@ -1371,18 +1369,14 @@ Overfull \hbox (26.1394pt too wide) in paragraph at lines 265--266
 
 File: ./images/deployment.png Graphic file (type bmp)
 <./images/deployment.png>
+[4]
 
 LaTeX Warning: `h' float specifier changed to `ht'.
 
-[6]
 File: ./images/component.png Graphic file (type bmp)
 <./images/component.png>
-
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-[7]
-Overfull \hbox (15.044pt too wide) in paragraph at lines 319--320
+[5] [6]
+Overfull \hbox (15.044pt too wide) in paragraph at lines 250--251
 [][][]\TU/Times(0)/m/n/10 Event Publishing[] \TU/BNazanin(0)/m/n/10 رویدادهای [
 ]\TU/Times(0)/m/n/10 SeatLocked[] \TU/BNazanin(0)/m/n/10 و []\TU/Times(0)/m/n/1
 0 LockExpired[] \TU/BNazanin(0)/m/n/10 و []\TU/Times(0)/m/n/10 PaymentSuccess[]
@@ -1391,13 +1385,26 @@ Overfull \hbox (15.044pt too wide) in paragraph at lines 319--320
 
 File: ./images/class.png Graphic file (type bmp)
 <./images/class.png>
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-[8]
+[7]
 File: ./images/activity.png Graphic file (type bmp)
 <./images/activity.png>
- [9] [10] (./Documents.aux)
+ [8]
+Overfull \hbox (30.29712pt too wide) in paragraph at lines 322--323
+[][][]\TU/Times(0)/m/n/10 Message Broker[] \TU/BNazanin(0)/m/n/10 استقرار []\TU
+/Times(0)/m/n/10 RabbitMQ[] \TU/BNazanin(0)/m/n/10 برای مدیریت صف‌های پیام و تض
+مین ارتباطات غیرهمزمان []\TU/Times(0)/m/n/10 Asynchronous[][]
+ []
+
+File: ./images/jira.png Graphic file (type bmp)
+<./images/jira.png>
+[9]
+Overfull \hbox (3.15926pt too wide) in paragraph at lines 367--368
+[][]\TU/BNazanin(0)/m/n/10 همچنین در طراحی معماری، استقرار سیستم بر روی کلاستر 
+[]\TU/Times(0)/m/n/10 Kubernetes[] \TU/BNazanin(0)/m/n/10 پیشنهاد شده است تا از
+ مقیاس‌پذیری[]
+ []
+
+[10] [11] (./Documents.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
@@ -1406,22 +1413,16 @@ L3 programming layer <2026-01-19>
 
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
-
-Package rerunfilecheck Warning: File `Documents.out' has changed.
-(rerunfilecheck)                Rerun to get outlines right
-(rerunfilecheck)                or use package `bookmark'.
-
-Package rerunfilecheck Info: Checksums for `Documents.out':
-(rerunfilecheck)             Before: F558688BD6C39ECB6C9BB19EAD1EBFD9;3627
-(rerunfilecheck)             After:  C7A8505473FA1602DE896E81C48DC74C;6430.
+Package rerunfilecheck Info: File `Documents.out' has not changed.
+(rerunfilecheck)             Checksum: 81CBD111FB6EC14B6FEA8A68641E16D7;8234.
  ) 
 Here is how much of TeX's memory you used:
- 44035 strings out of 470179
- 1081624 string characters out of 5479299
- 1661686 words of memory out of 5000000
- 71857 multiletter control sequences out of 15000+600000
- 628911 words of font info for 90 fonts, out of 8000000 for 9000
+ 44060 strings out of 470179
+ 1082187 string characters out of 5479299
+ 1663684 words of memory out of 5000000
+ 71879 multiletter control sequences out of 15000+600000
+ 628927 words of font info for 92 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 122i,12n,131p,952b,479s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 122i,13n,131p,952b,508s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
-Output written on Documents.pdf (10 pages).
+Output written on Documents.pdf (11 pages).

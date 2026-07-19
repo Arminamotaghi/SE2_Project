@@ -144,75 +144,6 @@
 \item ارسال پیام‌های ناموفق به \lr{Dead-Letter Queue} جهت تلاش مجدد.
 \end{description}
 
-\section{\lr{Product Vision}}
-
-پلتفرم \lr{End-to-End Ticketing} یک سیستم با \lr{High Availability} برای مدیریت \lr{Flash Sales} و ترافیک بالا است. هدف سیستم جلوگیری از \lr{Downtime} و مقیاس‌پذیری پویا برای توسعه سیستم است.
-
-\subsection{کاربران هدف}
-
-\begin{description}[font=$\bullet$~\normalsize\scshape]
-\item \lr{End-User} نیازمند جستجوی سریع رویداد مشاهده نقشه \lr{Real-Time} سالن قرارگیری در \lr{Virtual Waiting Room} و دریافت \lr{QR Code}.
-\item \lr{Admin} نیازمند طراحی سالن چندبخشی تنظیم \lr{Dynamic Pricing} و مشاهده \lr{Dashboards} تحلیلی در لحظه.
-\end{description}
-
-\subsection{معیارهای کلیدی عملکرد}
-
-\begin{enumerate}
-\item \lr{Checkout Completion Rate} بررسی درصد موفقیت پرداخت پس از قفل صندلی.
-\item \lr{Seat Lock Expiration Rate} بررسی نرخ انقضای قفل‌های موقت \lr{Redis}.
-\item \lr{Latency} حفظ زمان پاسخگویی زیر یک ثانیه و پایداری \lr{Uptime} بالا.
-\item \lr{Gross Merchandise Value} پیگیری درآمدزایی سیستم به صورت زنده.
-\end{enumerate}
-
-\vspace{1cm}
-
-\section{\lr{Risk Mitigation Analysis}}
-
-\subsection{ریسک اول \lr{Flash Traffic Spikes}}
-
-شرح ریسک هجوم همزمان ربات‌ها و کاربران به \lr{API Gateway} و خطر از کار افتادن \lr{Event Catalog}.
-
-راهکار مهندسی
-
-\begin{description}[font=$\bullet$~\normalsize\scshape]
-\item اجرای \lr{Virtual Waiting Room} برای \lr{Traffic Throttling}.
-\item تنظیم \lr{Rate Limiting} در لایه \lr{Edge}.
-\item استفاده از \lr{Auto-scaling} در \lr{Kubernetes}.
-\end{description}
-
-\subsection{ریسک دوم \lr{Race Conditions}}
-
-شرح ریسک درخواست همزمان برای یک صندلی و خطر \lr{Double-Booking}.
-
-راهکار مهندسی
-
-\begin{description}[font=$\bullet$~\normalsize\scshape]
-\item پیاده‌سازی \lr{Distributed Locks} توسط \lr{Redis} با \lr{Time-To-Live} مشخص.
-\item استفاده از \lr{Optimistic Concurrency Control} در \lr{PostgreSQL}.
-\end{description}
-
-\subsection{ریسک سوم \lr{Payment Gateway Timeout}}
-
-شرح ریسک قطعی درگاه بانکی در حین \lr{Checkout} و گیر کردن صندلی در حالت رزرو.
-
-راهکار مهندسی
-
-\begin{description}[font=$\bullet$~\normalsize\scshape]
-\item اجرای \lr{Saga Pattern} و تراکنش‌های \lr{Compensation}.
-\item آزادسازی خودکار قفل‌ها و بازگشت صندلی به سیستم در صورت دریافت خطا.
-\end{description}
-
-\subsection{ریسک چهارم \lr{Network Partitioning}}
-
-شرح ریسک قطعی ارتباط بین سرویس‌ها مانند عدم ارسال \lr{SMS} تایید به مشتری.
-
-راهکار مهندسی
-
-\begin{description}[font=$\bullet$~\normalsize\scshape]
-\item استفاده از \lr{Asynchronous Messaging} توسط \lr{Message Brokers}.
-\item ارسال پیام‌های ناموفق به \lr{Dead-Letter Queue} جهت تلاش مجدد.
-\end{description}
-
 \vspace{1cm}
 
 \section{\lr{Diagrams}}
@@ -395,6 +326,12 @@
 
 توسعه پلتفرم با رویکرد تکرارپذیر و بر اساس متدولوژی \lr{Scrum} مدیریت می‌شود. برای پیگیری وظایف و کنترل کیفیت کدها از ابزارهای \lr{Jira} و \lr{GitLab CI/CD} استفاده شده است.
 
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{jira.png}
+\caption{نمای \lr{Timeline} پروژه و توزیع وظایف در \lr{Jira}}
+\end{figure}
+
 \subsection{ساختار شکست کار و عملیات چابک}
 
 نیازهای سیستم به دامنه‌های سطح بالا تحت عنوان اپیک \lr{Epic} تقسیم شده‌اند. یکی از حیاتی‌ترین اپیک‌های این سیستم \lr{Distributed Reservation Engine Setup} است. 
@@ -405,11 +342,11 @@
 
 \subsection{استراتژی تضمین کیفیت و تست یکپارچگی}
 
-با توجه به ماهیت ترافیک بالا در پلتفرم‌های فروش بلیت و خطر بروز خطای فروش مضاعف \lr{Overbooking} استراتژی‌های تست زیر به صورت اجباری در خط لوله \lr{Pipeline} پیاده‌سازی شده‌اند
+با توجه به ماهیت ترافیک بالا در پلتفرم‌های فروش بلیت و خطر بروز خطای فروش مضاعف \lr{Overbooking} استراتژی‌های تست زیر در نظر گرفته شده‌اند.
 
 \begin{description}[font=$\bullet$~\normalsize\scshape]
 \item \lr{Load and Stress Testing} نوشتن اسکریپت‌های تست برای شبیه‌سازی هجوم هزاران درخواست همزمان از سوی ربات‌ها \lr{Bot Requests} به یک صندلی خاص جهت سنجش پایداری قفل‌های \lr{Redis}.
-\item \lr{Mutation Testing} اعمال تغییرات عمدی و مخرب در کدهای هسته مرکزی رزرواسیون برای اطمینان از اینکه تست‌های نوشته شده \lr{Unit Tests} توانایی کشف خطاهای منطقی را دارند و پوشش کد \lr{Code Coverage} در ماژول‌های تراکنشی کامل است.
+\item \lr{Mutation Testing} به عنوان یک استراتژی پیشرفته پیشنهاد می‌شود که با ایجاد تغییرات عمدی در کد هسته رزرواسیون، از توانایی تست‌های \lr{Unit Tests} در کشف خطاهای منطقی اطمینان حاصل می‌کند و پوشش کد \lr{Code Coverage} را در ماژول‌های تراکنشی می‌سنجد.
 \item \lr{Automated Verifications} اجرای خودکار تست‌ها در هر \lr{Commit} با استفاده از \lr{GitLab CI} برای جلوگیری از ورود کدهای معیوب به محیط عملیاتی.
 \end{description}
 
@@ -427,8 +364,7 @@
 
 برای جلوگیری از قطعی سیستم در زمان ترافیک لحظه‌ای از معماری پیام‌محور \lr{Asynchronous Messaging} استفاده شده است. نتایج تراکنش‌ها از طریق صف‌های پیام به سرویس اطلاع‌رسانی منتقل می‌شوند تا بار پردازشی کاهش یابد.
 
-همچنین کلاستر \lr{Kubernetes} به گونه‌ای پیکربندی شده است که از مقیاس‌پذیری افقی خودکار \lr{Horizontal Auto-scaling} و استقرار بدون قطعی \lr{Zero-downtime Canary Upgrades} پشتیبانی کند. وضعیت سلامت سیستم خطاهای شبکه و تاخیر کوئری‌ها به صورت لحظه‌ای توسط \lr{Prometheus} و \lr{Grafana} مانیتور می‌شوند.
-
+همچنین در طراحی معماری، استقرار سیستم بر روی کلاستر \lr{Kubernetes} پیشنهاد شده است تا از مقیاس‌پذیری افقی خودکار \lr{Horizontal Auto-scaling} و استقرار بدون قطعی \lr{Zero-downtime Canary Upgrades} پشتیبانی شود. برای پایش وضعیت سلامت سیستم، استفاده از \lr{Prometheus} و \lr{Grafana} به عنوان راهکار پیشنهادی در نظر گرفته شده است.
 \subsection{گزارش کالبدشکافی قطعی‌ها \lr{Incident Postmortems}}
 
 برای مدیریت حوادث چرخش‌های شیفت پاسخگویی \lr{On-Call Rotations} تعریف شده است تا در صورت عبور متریک‌ها از آستانه خطر تیم مهندسی بلافاصله وارد عمل شود. در ادامه سناریوهای قطعی بحرانی تحلیل شده‌اند
@@ -436,7 +372,20 @@
 \begin{description}[font=$\bullet$~\normalsize\scshape]
 \item \lr{Payment Processing Outages} در این سناریو درگاه پرداخت خارجی دچار قطعی و پایان زمان انتظار \lr{Timeout} می‌شود. در نتیجه صندلی‌های رزرو شده در حالت قفل معلق می‌مانند. راهکار مهندسی اجرای اسکریپت‌های جبرانی \lr{Compensation Scripts} است که با دریافت خطای پرداخت از طریق صف پیام بلافاصله قفل سیستم \lr{Redis} را می‌شکنند و صندلی‌ها را به چرخه فروش بازمی‌گردانند.
 \item \lr{Queue Worker Failures} در این سناریو سیستم اتاق انتظار مجازی تحت فشار هجوم میلیونی کاربران دچار فروپاشی می‌شود. سیستم به گونه‌ای طراحی شده است که در صورت از کار افتادن این ماژول درخواست‌های جدید بدون درگیر کردن هسته مرکزی دیتابیس با خطای استاندارد عدم سرویس‌دهی موقت \lr{HTTP 503 Service Unavailable} مواجه شوند تا از فروپاشی کل سیستم جلوگیری گردد.
-\item \lr{Inter-Service Network Partitioning} در این سناریو ارتباط شبکه‌ای بین درگاه ورودی \lr{API Gateway} و موتورهای داخلی قطع می‌شود. برای رفع این مشکل از الگوی قطع‌کننده مدار \lr{Circuit Breaker} استفاده شده است تا ضمن جلوگیری از انباشت درخواست‌های ناموفق سیستم به صورت خودکار پس از بازیابی شبکه عملیات را از سر بگیرد.
-\end{description}
+\item \lr{Inter-Service Network Partitioning} در این سناریو ارتباط شبکه‌ای بین درگاه ورودی \lr{API Gateway} و موتورهای داخلی قطع می‌شود. برای رفع این مشکل استفاده از الگوی قطع‌کننده مدار \lr{Circuit Breaker} پیشنهاد می‌شود تا ضمن جلوگیری از انباشت درخواست‌های ناموفق سیستم به صورت خودکار پس از بازیابی شبکه عملیات را از سر بگیرد.\end{description}
+
+\section{طراحی و تقسیم‌بندی میکروسرویس‌ها}
+
+سیستم فروش بلیت ما بر اساس اصول \lr{Domain-Driven Design} به پنج دامنه‌ی مستقل تقسیم شده است. هر دامنه یک مسئولیت مشخص دارد و از طریق \lr{REST API} یا پیام‌رسان \lr{RabbitMQ} با سایر دامنه‌ها ارتباط برقرار می‌کند. این تقسیم‌بندی باعث کاهش وابستگی و امکان \lr{independent scaling} می‌شود.
+
+سرویس هویت و دسترسی مسئول \lr{registration}، \lr{login} و صدور \lr{JWT token} است. کنترل دسترسی مبتنی بر نقش در این سرویس پیاده‌سازی شده و کاربران را به دو گروه \lr{Admin} و \lr{Customer} تقسیم می‌کند. برای امنیت بیشتر، \lr{token} در قالب \lr{httpOnly Cookie} ذخیره می‌شود تا در برابر حملات \lr{XSS} مقاوم باشد.
+
+سرویس کاتالوگ و رویداد اطلاعات سالن‌ها، رویدادها و صندلی‌ها را نگهداری می‌کند. ساختار هر صندلی شامل \lr{section}، \lr{row} و \lr{seat number} است و وضعیت آن در یکی از سه حالت \lr{Available}، \lr{Locked} یا \lr{Booked} قرار دارد.
+
+سرویس رزرو و موجودی هسته‌ی اصلی سیستم است و مسئولیت \lr{concurrency control} را بر عهده دارد. برای جلوگیری از \lr{double-booking}، از دستور اتمیک \lr{SET NX} در \lr{Redis} استفاده می‌شود. هر قفل دارای یک \lr{TTL} است تا در صورت رها شدن، صندلی به‌طور خودکار آزاد شود.
+
+سرویس پرداخت و تسویه درخواست پرداخت را دریافت کرده و پس از تأیید مالکیت قفل، یک پیام موفقیت را به صف \lr{RabbitMQ} ارسال می‌کند. جداسازی این سرویس از عملیات ذخیره‌سازی، باعث \lr{fault tolerance} و پاسخ‌دهی سریع به کاربر می‌شود.
+
+سرویس پردازش و اعلان به‌صورت یک \lr{worker} مستقل عمل می‌کند و پیام‌های پرداخت را از صف دریافت می‌کند. سپس وضعیت صندلی را در پایگاه‌داده به \lr{Booked} تغییر داده و قفل مربوطه را آزاد می‌کند. این معماری \lr{asynchronous} تضمین می‌کند که حتی در صورت قطعی موقت پایگاه‌داده، هیچ پیامی از دست نرود.
 
 \end{document}
