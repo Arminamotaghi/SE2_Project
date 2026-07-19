@@ -1,89 +1,101 @@
 .venue-page {
   min-height: 100vh;
-  padding: 24px 16px 40px;
-  background: #f1f5f9;
+  padding: 24px 16px 52px;
 }
 
 .venue-toolbar {
-  width: min(100%, 700px);
+  position: sticky;
+  top: 16px;
+  z-index: 20;
+  width: min(100%, 760px);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
-  margin: 0 auto 18px;
-  padding: 14px 18px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  margin: 0 auto 22px;
+  padding: 13px 15px 13px 18px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-small);
+  backdrop-filter: blur(20px);
 }
 
 .venue-user {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .venue-user-label {
-  color: #64748b;
-  font-size: 12px;
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
 .venue-user-details {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
 }
 
 .venue-user-details strong {
-  color: #0f172a;
+  color: var(--text-primary);
+  font-size: 14px;
 }
 
 .venue-role {
-  padding: 3px 8px;
-  color: #4338ca;
-  background: #eef2ff;
+  padding: 4px 8px;
+  color: var(--primary-light);
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.22);
   border-radius: 999px;
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .venue-toolbar-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
 }
 
 .admin-panel-button,
 .logout-button {
-  padding: 10px 16px;
-  border: 0;
-  border-radius: 9px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
 }
 
 .admin-panel-button {
-  color: #4338ca;
-  background: #eef2ff;
+  color: #ddd6fe;
+  background: rgba(124, 58, 237, 0.14);
+  border: 1px solid rgba(139, 92, 246, 0.26);
 }
 
 .admin-panel-button:hover {
-  background: #e0e7ff;
+  color: #ffffff;
+  background: rgba(124, 58, 237, 0.28);
+  transform: translateY(-1px);
 }
 
 .logout-button {
-  color: #b91c1c;
-  background: #fee2e2;
+  color: #fca5a5;
+  background: rgba(127, 29, 29, 0.22);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .logout-button:hover:not(:disabled) {
-  background: #fecaca;
+  color: #ffffff;
+  background: rgba(185, 28, 28, 0.42);
+  transform: translateY(-1px);
 }
 
 .logout-button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -93,6 +105,7 @@
 
 @media (max-width: 560px) {
   .venue-toolbar {
+    position: static;
     align-items: stretch;
     flex-direction: column;
   }
