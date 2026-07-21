@@ -13,14 +13,15 @@ router = APIRouter(prefix="/events", tags=["Events"])
 
 
 class EventCreate(BaseModel):
-    model_config = ConfigDict(extra="ignore")  
+    model_config = ConfigDict(extra="ignore")
     title: str
     description: str | None = None
-    venue: str | None = None          
-    starts_at: datetime               
+    venue: str | None = None
+    starts_at: datetime
     price: float | None = 150.00
     total_seats: int | None = 25
     image_url: str | None = None
+
 
 class EventResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -28,37 +29,48 @@ class EventResponse(BaseModel):
     title: str
     description: str | None
     venue: str | None = None
-    starts_at: datetime              
+    starts_at: datetime
     price: float | None = None
     is_active: bool
 
+
 class SeatResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    seat_id: str          
+    seat_id: str
     seat_number: int
     row_name: str
     section_name: str
     price: float
     status: str
 
+
+def _build_event_response(event, db) -> EventResponse:
+    venue = db.query(models.Venue).filter(models.Venue.id == event.venue_id).first()
+    first_seat = db.query(models.Seat).filter(models.Seat.event_id == event.id).first()
+    return EventResponse(
+        id=str(event.id),
+        title=event.title,
+        description=event.description,
+        venue=venue.name if venue else None,
+        starts_at=event.start_time,
+        price=float(first_seat.price) if first_seat else None,
+        is_active=event.is_active,
+    )
+
+
 @router.get("", response_model=list[EventResponse])
 def list_events(db: Session = Depends(get_db)):
     events = db.query(models.Event).filter(models.Event.is_active == True).all()
-    result = []
-    for e in events:
-        venue = db.query(models.Venue).filter(models.Venue.id == e.venue_id).first()
-        first_seat = db.query(models.Seat).filter(models.Seat.event_id == e.id).first()
-        result.append(EventResponse(
-            id=str(e.id),
-            title=e.title,
-            description=e.description,
-            venue=venue.name if venue else None,
-            starts_at=e.start_time,
-            start_time=e.start_time,
-            price=float(first_seat.price) if first_seat else None,
-            is_active=e.is_active,
-        ))
-    return result
+    return [_build_event_response(e, db) for e in events]
+
+
+@router.get("/{event_id}", response_model=EventResponse)
+def get_event(event_id: str, db: Session = Depends(get_db)):
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    return _build_event_response(event, db)
+
 
 @router.get("/{event_id}/seats", response_model=list[SeatResponse])
 def get_event_seats(event_id: str, db: Session = Depends(get_db)):
@@ -67,23 +79,7 @@ def get_event_seats(event_id: str, db: Session = Depends(get_db)):
     ).order_by(models.Seat.seat_number).all()
     return [
         SeatResponse(
-            seat_id=f"SEAT-{s.seat_number}",   # ⬅️ ساخت seat_id
-            seat_number=s.seat_number,
-            row_name=s.row_name,
-            section_name=s.section_name,
-            price=float(s.price),
-            status=s.status.value,
-        )
-        for s in seats
-    ]
-
-@router.get("/{event_id}/seats", response_model=list[SeatResponse])
-def get_event_seats(event_id: str, db: Session = Depends(get_db)):
-    seats = db.query(models.Seat).filter(
-        models.Seat.event_id == event_id
-    ).order_by(models.Seat.seat_number).all()
-    return [
-        SeatResponse(
+            seat_id=f"SEAT-{s.seat_number}",
             seat_number=s.seat_number,
             row_name=s.row_name,
             section_name=s.section_name,
@@ -126,7 +122,7 @@ def create_event(
         description=payload.description,
         venue_id=venue.id,
         organizer_id=current_user.id,
-        start_time=payload.starts_at,   
+        start_time=payload.starts_at,
         is_active=True,
     )
     db.add(event)
@@ -148,13 +144,4 @@ def create_event(
         db.add(seat)
     db.commit()
 
-    return EventResponse(
-        id=str(event.id),
-        title=event.title,
-        description=event.description,
-        venue=venue.name,
-        starts_at=event.start_time,
-        start_time=event.start_time,
-        price=seat_price,
-        is_active=event.is_active,
-    )
+    return _build_event_response(event, db)
