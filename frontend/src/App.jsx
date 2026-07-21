@@ -6,11 +6,15 @@ import {
 
 import { useAuth } from "./auth/AuthContext";
 import AdminRoute from "./components/AdminRoute";
+import OrganizerRoute from "./components/OrganizerRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminDashboard from "./pages/AdminDashboard";
+import CreateEventPage from "./pages/CreateEventPage";
+import EventSeatsPage from "./pages/EventSeatsPage";
+import EventsPage from "./pages/EventsPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import VenuePage from "./pages/VenuePage";
+import TicketsPage from "./pages/TicketsPage";
 import "./App.css";
 
 function App() {
@@ -27,7 +31,11 @@ function App() {
           isAuthenticated
             ? (
               <Navigate
-                to={isAdmin ? "/admin" : "/"}
+                to={
+                  isAdmin
+                    ? "/admin"
+                    : "/events"
+                }
                 replace
               />
             )
@@ -41,7 +49,7 @@ function App() {
           isAuthenticated
             ? (
               <Navigate
-                to={isAdmin ? "/admin" : "/"}
+                to="/events"
                 replace
               />
             )
@@ -50,11 +58,38 @@ function App() {
       />
 
       <Route
-        path="/"
+        path="/events"
         element={
           <ProtectedRoute>
-            <VenuePage />
+            <EventsPage />
           </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/events/:eventId/seats"
+        element={
+          <ProtectedRoute>
+            <EventSeatsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/tickets"
+        element={
+          <ProtectedRoute>
+            <TicketsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/organizer/events/new"
+        element={
+          <OrganizerRoute>
+            <CreateEventPage />
+          </OrganizerRoute>
         }
       />
 
@@ -68,14 +103,26 @@ function App() {
       />
 
       <Route
+        path="/"
+        element={
+          <Navigate
+            to={
+              isAuthenticated
+                ? "/events"
+                : "/login"
+            }
+            replace
+          />
+        }
+      />
+
+      <Route
         path="*"
         element={
           <Navigate
             to={
               isAuthenticated
-                ? isAdmin
-                  ? "/admin"
-                  : "/"
+                ? "/events"
                 : "/login"
             }
             replace

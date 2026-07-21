@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import axios from "axios";
@@ -20,19 +21,50 @@ const SEAT_STATUS = {
   BOOKED: "BOOKED",
 };
 
-const SEAT_PRICE = 150;
+const DEFAULT_SEAT_PRICE = 150;
+const DEFAULT_SEAT_COUNT = 25;
 
-const SEAT_IDS = Array.from(
-  { length: 25 },
-  (_, index) => `SEAT-${index + 1}`
-);
+function createSeatIds(totalSeats) {
+  const parsedTotalSeats = Number(totalSeats);
 
-function createInitialSeats() {
-  return SEAT_IDS.map((seatId, index) => ({
+  const validTotalSeats =
+    Number.isInteger(parsedTotalSeats) &&
+    parsedTotalSeats > 0
+      ? parsedTotalSeats
+      : DEFAULT_SEAT_COUNT;
+
+  return Array.from(
+    { length: validTotalSeats },
+    (_, index) => `SEAT-${index + 1}`
+  );
+}
+
+function createInitialSeats(seatIds) {
+  return seatIds.map((seatId, index) => ({
     id: seatId,
     number: index + 1,
     status: SEAT_STATUS.AVAILABLE,
   }));
+}
+
+function normalizeSeatStatus(status) {
+  const normalizedStatus = String(status || "")
+    .trim()
+    .toUpperCase();
+
+  if (normalizedStatus === "LOCKED_BY_OTHERS") {
+    return SEAT_STATUS.LOCKED_BY_OTHER;
+  }
+
+  if (
+    Object.values(SEAT_STATUS).includes(
+      normalizedStatus
+    )
+  ) {
+    return normalizedStatus;
+  }
+
+  return SEAT_STATUS.AVAILABLE;
 }
 
 function getErrorDetail(error, fallbackMessage) {
@@ -46,36 +78,99 @@ function getErrorDetail(error, fallbackMessage) {
     return detail;
   }
 
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => item?.msg)
+      .filter(Boolean)
+      .join(", ");
+  }
+
   return fallbackMessage;
 }
 
-function SeatMap() {
-  const [seats, setSeats] = useState(createInitialSeats);
-  const [selectedSeats, setSelectedSeats] = useState([]);
+function SeatMap({
+  eventId,
+  seatPrice = DEFAULT_SEAT_PRICE,
+  totalSeats = DEFAULT_SEAT_COUNT,
+}) {
+  const normalizedEventId = String(
+    eventId || ""
+  ).trim();
+
+  const normalizedSeatPrice = Number.isFinite(
+    Number(seatPrice)
+  )
+    ? Number(seatPrice)
+    : DEFAULT_SEAT_PRICE;
+
+  const seatIds = useMemo(
+    () => createSeatIds(totalSeats),
+    [totalSeats]
+  );
+
+  const [seats, setSeats] = useState(() =>
+    createInitialSeats(seatIds)
+  );
+
+  const [selectedSeats, setSelectedSeats] =
+    useState([]);
+
   const [message, setMessage] = useState(
     "Select one or more available seats."
   );
-  const [pendingSeatId, setPendingSeatId] = useState(null);
-  const [isPaying, setIsPaying] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const [pendingSeatId, setPendingSeatId] =
+    useState(null);
+
+  const [isPaying, setIsPaying] =
+    useState(false);
+
+  const [isRefreshing, setIsRefreshing] =
+    useState(false);
 
   const refreshSeatStatuses = useCallback(
     async (showError = false) => {
+      if (!normalizedEventId) {
+        if (showError) {
+          setMessage(
+            "The event identifier is missing."
+          );
+        }
+
+        return;
+      }
+
       setIsRefreshing(true);
 
       try {
-        const response = await getSeatStatuses(SEAT_IDS);
+        const response = await getSeatStatuses(
+          normalizedEventId,
+          seatIds
+        );
+
+        const responseSeats = Array.isArray(
+          response?.seats
+        )
+          ? response.seats
+          : [];
 
         const serverSeats = new Map(
-          response.seats.map((seat) => [
+          responseSeats.map((seat) => [
             seat.seat_id,
-            seat,
+            {
+              ...seat,
+              status: normalizeSeatStatus(
+                seat.status
+              ),
+            },
           ])
         );
 
         setSeats((currentSeats) =>
           currentSeats.map((seat) => {
-            const serverSeat = serverSeats.get(seat.id);
+            const serverSeat = serverSeats.get(
+              seat.id
+            );
 
             if (!serverSeat) {
               return seat;
@@ -88,10 +183,11 @@ function SeatMap() {
           })
         );
 
-        const lockedByMeSeatIds = response.seats
+        const lockedByMeSeatIds = responseSeats
           .filter(
             (seat) =>
-              seat.status === SEAT_STATUS.LOCKED_BY_ME
+              normalizeSeatStatus(seat.status) ===
+              SEAT_STATUS.LOCKED_BY_ME
           )
           .map((seat) => seat.seat_id);
 
@@ -109,10 +205,26 @@ function SeatMap() {
         setIsRefreshing(false);
       }
     },
-    []
+    [normalizedEventId, seatIds]
   );
 
   useEffect(() => {
+    setSeats(createInitialSeats(seatIds));
+    setSelectedSeats([]);
+    setPendingSeatId(null);
+    setIsPaying(false);
+    setMessage(
+      "Select one or more available seats."
+    );
+
+    if (!normalizedEventId) {
+      setMessage(
+        "The event identifier is missing."
+      );
+
+      return undefined;
+    }
+
     refreshSeatStatuses(true);
 
     const intervalId = window.setInterval(() => {
@@ -122,9 +234,16 @@ function SeatMap() {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [refreshSeatStatuses]);
+  }, [
+    normalizedEventId,
+    refreshSeatStatuses,
+    seatIds,
+  ]);
 
-  const updateSeatLocally = (seatId, status) => {
+  const updateSeatLocally = (
+    seatId,
+    status
+  ) => {
     setSeats((currentSeats) =>
       currentSeats.map((seat) =>
         seat.id === seatId
@@ -138,29 +257,50 @@ function SeatMap() {
   };
 
   const addSelectedSeat = (seatId) => {
-    setSelectedSeats((currentSelectedSeats) => {
-      if (currentSelectedSeats.includes(seatId)) {
-        return currentSelectedSeats;
+    setSelectedSeats(
+      (currentSelectedSeats) => {
+        if (
+          currentSelectedSeats.includes(seatId)
+        ) {
+          return currentSelectedSeats;
+        }
+
+        return [
+          ...currentSelectedSeats,
+          seatId,
+        ];
       }
-
-      return [...currentSelectedSeats, seatId];
-    });
-  };
-
-  const removeSelectedSeat = (seatId) => {
-    setSelectedSeats((currentSelectedSeats) =>
-      currentSelectedSeats.filter(
-        (selectedSeatId) => selectedSeatId !== seatId
-      )
     );
   };
 
-  const lockSelectedSeat = async (seatId) => {
+  const removeSelectedSeat = (seatId) => {
+    setSelectedSeats(
+      (currentSelectedSeats) =>
+        currentSelectedSeats.filter(
+          (selectedSeatId) =>
+            selectedSeatId !== seatId
+        )
+    );
+  };
+
+  const lockSelectedSeat = async (
+    seatId
+  ) => {
+    if (!normalizedEventId) {
+      setMessage(
+        "The event identifier is missing."
+      );
+      return;
+    }
+
     setPendingSeatId(seatId);
     setMessage(`Locking ${seatId}...`);
 
     try {
-      await lockSeat(seatId);
+      await lockSeat(
+        normalizedEventId,
+        seatId
+      );
 
       updateSeatLocally(
         seatId,
@@ -196,6 +336,13 @@ function SeatMap() {
         setMessage(
           "Your session has expired. Please log in again."
         );
+      } else if (
+        axios.isAxiosError(error) &&
+        error.response?.status === 404
+      ) {
+        setMessage(
+          "The selected event or seat was not found."
+        );
       } else {
         setMessage(
           getErrorDetail(
@@ -204,17 +351,31 @@ function SeatMap() {
           )
         );
       }
+
+      await refreshSeatStatuses(false);
     } finally {
       setPendingSeatId(null);
     }
   };
 
-  const releaseSelectedSeat = async (seatId) => {
+  const releaseSelectedSeat = async (
+    seatId
+  ) => {
+    if (!normalizedEventId) {
+      setMessage(
+        "The event identifier is missing."
+      );
+      return;
+    }
+
     setPendingSeatId(seatId);
     setMessage(`Releasing ${seatId}...`);
 
     try {
-      await releaseSeat(seatId);
+      await releaseSeat(
+        normalizedEventId,
+        seatId
+      );
 
       updateSeatLocally(
         seatId,
@@ -243,6 +404,13 @@ function SeatMap() {
         setMessage(
           "You are not allowed to release this seat."
         );
+      } else if (
+        axios.isAxiosError(error) &&
+        error.response?.status === 404
+      ) {
+        setMessage(
+          "The selected event or seat was not found."
+        );
       } else {
         setMessage(
           getErrorDetail(
@@ -259,21 +427,38 @@ function SeatMap() {
   };
 
   const handleSeatClick = async (seat) => {
-    if (pendingSeatId || isPaying) {
+    if (
+      pendingSeatId ||
+      isPaying ||
+      !normalizedEventId
+    ) {
       return;
     }
 
-    if (seat.status === SEAT_STATUS.AVAILABLE) {
+    if (
+      seat.status ===
+      SEAT_STATUS.AVAILABLE
+    ) {
       await lockSelectedSeat(seat.id);
       return;
     }
 
-    if (seat.status === SEAT_STATUS.LOCKED_BY_ME) {
+    if (
+      seat.status ===
+      SEAT_STATUS.LOCKED_BY_ME
+    ) {
       await releaseSelectedSeat(seat.id);
     }
   };
 
   const handlePayAll = async () => {
+    if (!normalizedEventId) {
+      setMessage(
+        "The event identifier is missing."
+      );
+      return;
+    }
+
     if (selectedSeats.length === 0) {
       setMessage(
         "Select at least one locked seat before payment."
@@ -286,20 +471,26 @@ function SeatMap() {
     setIsPaying(true);
 
     setMessage(
-      `Processing payment for ${seatsToPay.length} seat${
+      `Processing payment for ${
+        seatsToPay.length
+      } seat${
         seatsToPay.length === 1 ? "" : "s"
       }...`
     );
 
     try {
-      await payForSeats(seatsToPay);
+      await payForSeats(
+        normalizedEventId,
+        seatsToPay
+      );
 
       setSeats((currentSeats) =>
         currentSeats.map((seat) =>
           seatsToPay.includes(seat.id)
             ? {
                 ...seat,
-                status: SEAT_STATUS.BOOKED,
+                status:
+                  SEAT_STATUS.BOOKED,
               }
             : seat
         )
@@ -310,7 +501,11 @@ function SeatMap() {
       setMessage(
         `Payment completed successfully for ${
           seatsToPay.length
-        } seat${seatsToPay.length === 1 ? "" : "s"}.`
+        } seat${
+          seatsToPay.length === 1
+            ? ""
+            : "s"
+        }.`
       );
 
       await refreshSeatStatuses(false);
@@ -328,6 +523,13 @@ function SeatMap() {
       ) {
         setMessage(
           "You do not own all selected seat locks."
+        );
+      } else if (
+        axios.isAxiosError(error) &&
+        error.response?.status === 404
+      ) {
+        setMessage(
+          "The selected event or one of its seats was not found."
         );
       } else if (
         axios.isAxiosError(error) &&
@@ -361,23 +563,41 @@ function SeatMap() {
   const getSeatClassName = (seat) => {
     const classNames = ["seat"];
 
-    if (seat.status === SEAT_STATUS.AVAILABLE) {
+    if (
+      seat.status ===
+      SEAT_STATUS.AVAILABLE
+    ) {
       classNames.push("seat-available");
     }
 
-    if (seat.status === SEAT_STATUS.LOCKED_BY_ME) {
-      classNames.push("seat-locked-by-me");
+    if (
+      seat.status ===
+      SEAT_STATUS.LOCKED_BY_ME
+    ) {
+      classNames.push(
+        "seat-locked-by-me"
+      );
     }
 
-    if (seat.status === SEAT_STATUS.LOCKED_BY_OTHER) {
-      classNames.push("seat-locked-by-other");
+    if (
+      seat.status ===
+      SEAT_STATUS.LOCKED_BY_OTHER
+    ) {
+      classNames.push(
+        "seat-locked-by-other"
+      );
     }
 
-    if (seat.status === SEAT_STATUS.BOOKED) {
+    if (
+      seat.status ===
+      SEAT_STATUS.BOOKED
+    ) {
       classNames.push("seat-booked");
     }
 
-    if (selectedSeats.includes(seat.id)) {
+    if (
+      selectedSeats.includes(seat.id)
+    ) {
       classNames.push("seat-selected");
     }
 
@@ -389,30 +609,45 @@ function SeatMap() {
   };
 
   const isSeatDisabled = (seat) => {
-    if (pendingSeatId || isPaying) {
+    if (
+      pendingSeatId ||
+      isPaying ||
+      !normalizedEventId
+    ) {
       return true;
     }
 
     return (
-      seat.status === SEAT_STATUS.LOCKED_BY_OTHER ||
-      seat.status === SEAT_STATUS.BOOKED
+      seat.status ===
+        SEAT_STATUS.LOCKED_BY_OTHER ||
+      seat.status ===
+        SEAT_STATUS.BOOKED
     );
   };
 
-  const totalPrice = selectedSeats.length * SEAT_PRICE;
+  const totalPrice =
+    selectedSeats.length *
+    normalizedSeatPrice;
 
   const isPayButtonDisabled =
     selectedSeats.length === 0 ||
     isPaying ||
-    pendingSeatId !== null;
+    pendingSeatId !== null ||
+    !normalizedEventId;
 
   return (
     <section className="seat-map">
       <header className="seat-map-header">
-        <p className="eyebrow">Online Ticketing</p>
+        <p className="eyebrow">
+          Online Ticketing
+        </p>
+
         <h1>Venue Seat Map</h1>
 
-        <p className="message" aria-live="polite">
+        <p
+          className="message"
+          aria-live="polite"
+        >
           {message}
         </p>
       </header>
@@ -424,11 +659,19 @@ function SeatMap() {
           <button
             key={seat.id}
             type="button"
-            className={getSeatClassName(seat)}
-            onClick={() => handleSeatClick(seat)}
-            disabled={isSeatDisabled(seat)}
+            className={getSeatClassName(
+              seat
+            )}
+            onClick={() =>
+              handleSeatClick(seat)
+            }
+            disabled={isSeatDisabled(
+              seat
+            )}
             aria-label={`Seat ${seat.number}, ${seat.status}`}
-            aria-pressed={selectedSeats.includes(seat.id)}
+            aria-pressed={selectedSeats.includes(
+              seat.id
+            )}
           >
             {pendingSeatId === seat.id
               ? "..."
@@ -450,7 +693,8 @@ function SeatMap() {
           </div>
 
           <span className="cart-total">
-            {totalPrice.toLocaleString()} Toman
+            {totalPrice.toLocaleString()}
+            {" Toman"}
           </span>
         </div>
 
@@ -462,16 +706,16 @@ function SeatMap() {
 
         <div className="cart-details">
           <span>
-            Price per seat:
-            {" "}
-            {SEAT_PRICE.toLocaleString()} Toman
+            Price per seat:{" "}
+            {normalizedSeatPrice.toLocaleString()}
+            {" Toman"}
           </span>
 
           <span>
-            Total:
-            {" "}
+            Total:{" "}
             <strong>
-              {totalPrice.toLocaleString()} Toman
+              {totalPrice.toLocaleString()}
+              {" Toman"}
             </strong>
           </span>
         </div>
@@ -485,8 +729,12 @@ function SeatMap() {
           {isPaying
             ? "Processing Payment..."
             : selectedSeats.length > 0
-              ? `Pay for ${selectedSeats.length} Seat${
-                  selectedSeats.length === 1 ? "" : "s"
+              ? `Pay for ${
+                  selectedSeats.length
+                } Seat${
+                  selectedSeats.length === 1
+                    ? ""
+                    : "s"
                 }`
               : "Select Seats to Pay"}
         </button>
