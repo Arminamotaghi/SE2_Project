@@ -3,6 +3,7 @@ import models
 from fastapi import FastAPI, HTTPException, status, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
+from tickets import router as tickets_router
 
 from payment_publisher import publish_payment_success
 from schema import (
@@ -41,6 +42,7 @@ app = FastAPI(
 
 app.include_router(auth_router)
 app.include_router(events_router)
+app.include_router(tickets_router)
 
 app.add_middleware(
     CORSMiddleware,

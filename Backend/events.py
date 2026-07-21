@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, ConfigDict
 
 from database import get_db
-from auth import get_current_user, require_role
+from auth import get_current_user
 
 
 router = APIRouter(prefix="/events", tags=["Events"])
