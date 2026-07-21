@@ -4,14 +4,14 @@ from config import settings
 LOCK_TTL_SECONDS = settings.SEAT_LOCK_TTL_SECONDS
 
 
-def _normalize_id(seat_id: str) -> str:
-    return str(seat_id).strip().lower()
+def _make_lock_key(event_id: str, seat_id: str) -> str:
+    event = str(event_id).strip().lower()
+    seat = str(seat_id).strip().lower()
+    return f"seat_lock:{event}:{seat}"
 
 
-def try_lock_seat(seat_id: str, user_id: str) -> bool:
-    normalized_id = _normalize_id(seat_id)
-    lock_key = f"seat_lock:{normalized_id}"
-
+def try_lock_seat(event_id: str, seat_id: str, user_id: str) -> bool:
+    lock_key = _make_lock_key(event_id, seat_id)
     is_locked = redis_client.set(
         name=lock_key,
         value=user_id,
@@ -21,10 +21,8 @@ def try_lock_seat(seat_id: str, user_id: str) -> bool:
     return bool(is_locked)
 
 
-def release_seat(seat_id: str, user_id: str) -> bool:
-    normalized_id = _normalize_id(seat_id)
-    lock_key = f"seat_lock:{normalized_id}"
-
+def release_seat(event_id: str, seat_id: str, user_id: str) -> bool:
+    lock_key = _make_lock_key(event_id, seat_id)
     current_owner = redis_client.get(lock_key)
     if current_owner is not None and current_owner == user_id:
         redis_client.delete(lock_key)
@@ -32,15 +30,13 @@ def release_seat(seat_id: str, user_id: str) -> bool:
     return False
 
 
-def get_seat_status(seat_id: str) -> str:
-    normalized_id = _normalize_id(seat_id)
-    lock_key = f"seat_lock:{normalized_id}"
-
+def get_seat_status(event_id: str, seat_id: str) -> str:
+    lock_key = _make_lock_key(event_id, seat_id)
     if redis_client.exists(lock_key):
         return "LOCKED"
     return "AVAILABLE"
 
-def get_lock_owner(seat_id: str) -> str | None:
-    normalized_id = _normalize_id(seat_id)
-    lock_key = f"seat_lock:{normalized_id}"
+
+def get_lock_owner(event_id: str, seat_id: str) -> str | None:
+    lock_key = _make_lock_key(event_id, seat_id)
     return redis_client.get(lock_key)
