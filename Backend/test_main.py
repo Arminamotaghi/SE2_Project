@@ -8,7 +8,6 @@ from main import app
 
 client = TestClient(app)
 
-# یک event_id ثابت برای تست‌ها
 TEST_EVENT_ID = "test-event-123"
 
 
