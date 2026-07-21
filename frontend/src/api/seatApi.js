@@ -1,19 +1,15 @@
 import apiClient from "./apiClient";
 
-export async function lockSeat(eventId, seatId) {
-  const response = await apiClient.post("/seats/lock", {
-    event_id: eventId,
-    seat_ids: [seatId],
-  });
-
-  return response.data;
+function getEventPath(eventId) {
+  return `/events/${encodeURIComponent(
+    String(eventId)
+  )}`;
 }
 
-export async function releaseSeat(eventId, seatId) {
-  const response = await apiClient.post("/seats/release", {
-    event_id: eventId,
-    seat_ids: [seatId],
-  });
+export async function getEventSeats(eventId) {
+  const response = await apiClient.get(
+    `${getEventPath(eventId)}/seats`
+  );
 
   return response.data;
 }
@@ -24,16 +20,42 @@ export async function getSeatStatuses(
 ) {
   const params = new URLSearchParams();
 
-  params.append("event_id", eventId);
-
   seatIds.forEach((seatId) => {
     params.append("seat_ids", seatId);
   });
 
   const response = await apiClient.get(
-    "/seats/status",
+    `${getEventPath(eventId)}/seats/status`,
     {
       params,
+    }
+  );
+
+  return response.data;
+}
+
+export async function lockSeat(
+  eventId,
+  seatId
+) {
+  const response = await apiClient.post(
+    `${getEventPath(eventId)}/seats/lock`,
+    {
+      seat_ids: [seatId],
+    }
+  );
+
+  return response.data;
+}
+
+export async function releaseSeat(
+  eventId,
+  seatId
+) {
+  const response = await apiClient.post(
+    `${getEventPath(eventId)}/seats/release`,
+    {
+      seat_ids: [seatId],
     }
   );
 
@@ -45,9 +67,8 @@ export async function payForSeats(
   seatIds
 ) {
   const response = await apiClient.post(
-    "/checkout/pay",
+    `${getEventPath(eventId)}/checkout/pay`,
     {
-      event_id: eventId,
       seat_ids: seatIds,
     }
   );

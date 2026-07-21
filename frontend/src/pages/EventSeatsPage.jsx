@@ -13,84 +13,63 @@ import SeatMap from "../components/SeatMap";
 import "./EventSeatsPage.css";
 
 const DEFAULT_SEAT_PRICE = 150;
-const DEFAULT_TOTAL_SEATS = 25;
 
-function getErrorDetail(error, fallbackMessage) {
-  if (!axios.isAxiosError(error)) {
-    return fallbackMessage;
+function formatEventDate(event) {
+  const dateValue =
+    event?.starts_at ??
+    event?.start_time ??
+    event?.date;
+
+  if (!dateValue) {
+    return "Date not specified";
   }
 
-  const detail = error.response?.data?.detail;
-
-  if (typeof detail === "string") {
-    return detail;
-  }
-
-  if (Array.isArray(detail)) {
-    return detail
-      .map((item) => item?.msg)
-      .filter(Boolean)
-      .join(", ");
-  }
-
-  return fallbackMessage;
-}
-
-function normalizePositiveNumber(
-  value,
-  fallbackValue
-) {
-  const parsedValue = Number(value);
+  const parsedDate = new Date(
+    dateValue
+  );
 
   if (
-    !Number.isFinite(parsedValue) ||
-    parsedValue <= 0
+    Number.isNaN(
+      parsedDate.getTime()
+    )
   ) {
-    return fallbackValue;
+    return String(dateValue);
   }
 
-  return parsedValue;
-}
-
-function normalizePositiveInteger(
-  value,
-  fallbackValue
-) {
-  const parsedValue = Number(value);
-
-  if (
-    !Number.isInteger(parsedValue) ||
-    parsedValue <= 0
-  ) {
-    return fallbackValue;
-  }
-
-  return parsedValue;
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      dateStyle: "full",
+      timeStyle: "short",
+    }
+  ).format(parsedDate);
 }
 
 function EventSeatsPage() {
   const navigate = useNavigate();
-  const { eventId } = useParams();
+  const { id: eventId } =
+    useParams();
 
-  const [event, setEvent] = useState(null);
-  const [errorMessage, setErrorMessage] =
-    useState("");
+  const [event, setEvent] =
+    useState(null);
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
+
   const [isLoading, setIsLoading] =
     useState(true);
 
   useEffect(() => {
-    let isMounted = true;
+    let isActive = true;
 
     async function loadEvent() {
       if (!eventId) {
-        if (isMounted) {
-          setEvent(null);
-          setErrorMessage(
-            "The event identifier is missing."
-          );
-          setIsLoading(false);
-        }
-
+        setErrorMessage(
+          "The event identifier is missing."
+        );
+        setIsLoading(false);
         return;
       }
 
@@ -107,47 +86,47 @@ function EventSeatsPage() {
 
         if (
           !loadedEvent ||
-          typeof loadedEvent !== "object"
+          typeof loadedEvent !==
+            "object"
         ) {
           throw new Error(
             "Invalid event response."
           );
         }
 
-        if (isMounted) {
+        if (isActive) {
           setEvent(loadedEvent);
         }
       } catch (error) {
-        if (!isMounted) {
+        if (!isActive) {
           return;
         }
 
         if (
           axios.isAxiosError(error) &&
-          error.response?.status === 404
+          error.response?.status ===
+            404
         ) {
           setErrorMessage(
             "The requested event was not found."
           );
-        } else if (
-          axios.isAxiosError(error) &&
-          error.response?.status === 401
-        ) {
-          setErrorMessage(
-            "Your session has expired. Please log in again."
-          );
         } else {
+          const detail =
+            axios.isAxiosError(error)
+              ? error.response?.data
+                  ?.detail
+              : null;
+
           setErrorMessage(
-            getErrorDetail(
-              error,
-              "Could not load event."
-            )
+            typeof detail === "string"
+              ? detail
+              : "Could not load event."
           );
         }
 
         setEvent(null);
       } finally {
-        if (isMounted) {
+        if (isActive) {
           setIsLoading(false);
         }
       }
@@ -156,7 +135,7 @@ function EventSeatsPage() {
     loadEvent();
 
     return () => {
-      isMounted = false;
+      isActive = false;
     };
   }, [eventId]);
 
@@ -193,8 +172,8 @@ function EventSeatsPage() {
   }
 
   const eventTitle =
-    event.title ||
-    event.name ||
+    event.title ??
+    event.name ??
     "Untitled Event";
 
   const eventVenue =
@@ -202,22 +181,17 @@ function EventSeatsPage() {
     event.location ??
     "Venue not specified";
 
-  const seatPrice =
-    normalizePositiveNumber(
-      event.price ??
-        event.seat_price ??
-        event.seatPrice,
+  const parsedPrice = Number(
+    event.price ??
+      event.seat_price ??
       DEFAULT_SEAT_PRICE
-    );
+  );
 
-  const totalSeats =
-    normalizePositiveInteger(
-      event.total_seats ??
-        event.totalSeats ??
-        event.seat_count ??
-        event.seatCount,
-      DEFAULT_TOTAL_SEATS
-    );
+  const eventPrice =
+    Number.isFinite(parsedPrice) &&
+    parsedPrice >= 0
+      ? parsedPrice
+      : DEFAULT_SEAT_PRICE;
 
   return (
     <main className="event-seats-page">
@@ -232,14 +206,19 @@ function EventSeatsPage() {
         </button>
 
         <div>
-          <span>Selecting seats for</span>
-          <strong>{eventTitle}</strong>
+          <span>
+            Selecting seats for
+          </span>
+
+          <strong>
+            {eventTitle}
+          </strong>
         </div>
 
         <button
           type="button"
           onClick={() =>
-            navigate("/tickets")
+            navigate("/my-tickets")
           }
         >
           My Tickets
@@ -251,25 +230,29 @@ function EventSeatsPage() {
 
         <h1>{eventTitle}</h1>
 
+        {event.description && (
+          <p className="event-detail-description">
+            {event.description}
+          </p>
+        )}
+
         <div className="event-information-details">
           <span>{eventVenue}</span>
 
           <span>
-            {seatPrice.toLocaleString()}
-            {" Toman per seat"}
+            {formatEventDate(event)}
           </span>
 
           <span>
-            {totalSeats.toLocaleString()}
-            {" seats"}
+            {eventPrice.toLocaleString()}
+            {" Toman per seat"}
           </span>
         </div>
       </section>
 
       <SeatMap
         eventId={eventId}
-        seatPrice={seatPrice}
-        totalSeats={totalSeats}
+        seatPrice={eventPrice}
       />
     </main>
   );

@@ -9,11 +9,21 @@ function OrganizerRoute({ children }) {
   } = useAuth();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
 
   if (!isOrganizer) {
-    return <Navigate to="/events" replace />;
+    return (
+      <Navigate
+        to="/events"
+        replace
+      />
+    );
   }
 
   return children;

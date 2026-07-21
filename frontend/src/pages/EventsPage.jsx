@@ -15,7 +15,9 @@ function normalizeEvents(responseData) {
     return responseData;
   }
 
-  if (Array.isArray(responseData?.events)) {
+  if (
+    Array.isArray(responseData?.events)
+  ) {
     return responseData.events;
   }
 
@@ -23,23 +25,32 @@ function normalizeEvents(responseData) {
 }
 
 function getEventId(event) {
-  return event.event_id ?? event.id;
+  return (
+    event?.event_id ??
+    event?.id
+  );
 }
 
-function getEventDate(event) {
+function formatEventDate(event) {
   const dateValue =
-    event.starts_at ??
-    event.start_time ??
-    event.date;
+    event?.starts_at ??
+    event?.start_time ??
+    event?.date;
 
   if (!dateValue) {
     return "Date not specified";
   }
 
-  const date = new Date(dateValue);
+  const parsedDate = new Date(
+    dateValue
+  );
 
-  if (Number.isNaN(date.getTime())) {
-    return dateValue;
+  if (
+    Number.isNaN(
+      parsedDate.getTime()
+    )
+  ) {
+    return String(dateValue);
   }
 
   return new Intl.DateTimeFormat(
@@ -48,7 +59,7 @@ function getEventDate(event) {
       dateStyle: "medium",
       timeStyle: "short",
     }
-  ).format(date);
+  ).format(parsedDate);
 }
 
 function EventsPage() {
@@ -61,32 +72,52 @@ function EventsPage() {
     logout,
   } = useAuth();
 
-  const [events, setEvents] = useState([]);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [events, setEvents] =
+    useState([]);
 
-  const loadEvents = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage("");
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
 
-    try {
-      const responseData = await getEvents();
-      setEvents(normalizeEvents(responseData));
-    } catch (error) {
-      const detail = axios.isAxiosError(error)
-        ? error.response?.data?.detail
-        : null;
+  const [isLoading, setIsLoading] =
+    useState(true);
 
-      setErrorMessage(
-        typeof detail === "string"
-          ? detail
-          : "Could not load events."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const [
+    isLoggingOut,
+    setIsLoggingOut,
+  ] = useState(false);
+
+  const loadEvents = useCallback(
+    async () => {
+      setIsLoading(true);
+      setErrorMessage("");
+
+      try {
+        const responseData =
+          await getEvents();
+
+        setEvents(
+          normalizeEvents(responseData)
+        );
+      } catch (error) {
+        const detail =
+          axios.isAxiosError(error)
+            ? error.response?.data
+                ?.detail
+            : null;
+
+        setErrorMessage(
+          typeof detail === "string"
+            ? detail
+            : "Could not load events."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     loadEvents();
@@ -97,7 +128,10 @@ function EventsPage() {
 
     try {
       await logout();
-      navigate("/login", { replace: true });
+
+      navigate("/login", {
+        replace: true,
+      });
     } finally {
       setIsLoggingOut(false);
     }
@@ -108,7 +142,9 @@ function EventsPage() {
       <header className="events-toolbar">
         <div className="events-brand">
           <span>TicketFlow</span>
-          <strong>Discover Events</strong>
+          <strong>
+            Discover Events
+          </strong>
         </div>
 
         <nav className="events-navigation">
@@ -118,7 +154,9 @@ function EventsPage() {
 
           <button
             type="button"
-            onClick={() => navigate("/tickets")}
+            onClick={() =>
+              navigate("/my-tickets")
+            }
           >
             My Tickets
           </button>
@@ -127,7 +165,9 @@ function EventsPage() {
             <button
               type="button"
               onClick={() =>
-                navigate("/organizer/events/new")
+                navigate(
+                  "/organizer/create"
+                )
               }
             >
               Create Event
@@ -137,7 +177,9 @@ function EventsPage() {
           {isAdmin && (
             <button
               type="button"
-              onClick={() => navigate("/admin")}
+              onClick={() =>
+                navigate("/admin")
+              }
             >
               Admin Panel
             </button>
@@ -163,11 +205,14 @@ function EventsPage() {
               Upcoming Experiences
             </p>
 
-            <h1>Find your next event</h1>
+            <h1>
+              Find your next event
+            </h1>
 
             <p>
-              Browse upcoming concerts, conferences,
-              performances and special events.
+              Browse upcoming concerts,
+              conferences, performances and
+              special events.
             </p>
           </div>
 
@@ -192,77 +237,100 @@ function EventsPage() {
           </div>
         )}
 
-        {!isLoading && events.length === 0 && (
-          <div className="events-empty">
-            <strong>No events available</strong>
-            <span>
-              New events will appear here.
-            </span>
-          </div>
-        )}
+        {!isLoading &&
+          events.length === 0 && (
+            <div className="events-empty">
+              <strong>
+                No events available
+              </strong>
+
+              <span>
+                New events will appear
+                here.
+              </span>
+            </div>
+          )}
 
         <div className="events-grid">
-          {events.map((event) => {
-            const eventId = getEventId(event);
+          {events.map(
+            (event, index) => {
+              const eventId =
+                getEventId(event);
 
-            return (
-              <article
-                key={eventId}
-                className="event-card"
-              >
-                <div className="event-card-image">
-                  {event.image_url ? (
-                    <img
-                      src={event.image_url}
-                      alt={event.title}
-                    />
-                  ) : (
-                    <div className="event-placeholder">
-                      <span>EVENT</span>
-                    </div>
-                  )}
+              return (
+                <article
+                  key={
+                    eventId ??
+                    `event-${index}`
+                  }
+                  className="event-card"
+                >
+                  <div className="event-card-image">
+                    {event.image_url ? (
+                      <img
+                        src={
+                          event.image_url
+                        }
+                        alt={
+                          event.title ||
+                          "Event"
+                        }
+                      />
+                    ) : (
+                      <div className="event-placeholder">
+                        <span>EVENT</span>
+                      </div>
+                    )}
 
-                  <span className="event-price">
-                    {Number(
-                      event.price ?? 0
-                    ).toLocaleString()}
-                    {" Toman"}
-                  </span>
-                </div>
-
-                <div className="event-card-content">
-                  <p className="event-date">
-                    {getEventDate(event)}
-                  </p>
-
-                  <h2>{event.title}</h2>
-
-                  <p className="event-description">
-                    {event.description ||
-                      "Event details will be announced soon."}
-                  </p>
-
-                  <div className="event-location">
-                    {event.venue ??
-                      event.location ??
-                      "Venue not specified"}
+                    <span className="event-price">
+                      {Number(
+                        event.price ?? 0
+                      ).toLocaleString()}
+                      {" Toman"}
+                    </span>
                   </div>
 
-                  <button
-                    type="button"
-                    className="event-select-button"
-                    onClick={() =>
-                      navigate(
-                        `/events/${eventId}/seats`
-                      )
-                    }
-                  >
-                    Select Seats
-                  </button>
-                </div>
-              </article>
-            );
-          })}
+                  <div className="event-card-content">
+                    <p className="event-date">
+                      {formatEventDate(
+                        event
+                      )}
+                    </p>
+
+                    <h2>
+                      {event.title ??
+                        event.name ??
+                        "Untitled Event"}
+                    </h2>
+
+                    <p className="event-description">
+                      {event.description ||
+                        "Event details will be announced soon."}
+                    </p>
+
+                    <div className="event-location">
+                      {event.venue ??
+                        event.location ??
+                        "Venue not specified"}
+                    </div>
+
+                    <button
+                      type="button"
+                      className="event-select-button"
+                      disabled={!eventId}
+                      onClick={() =>
+                        navigate(
+                          `/events/${eventId}`
+                        )
+                      }
+                    >
+                      View Event
+                    </button>
+                  </div>
+                </article>
+              );
+            }
+          )}
         </div>
       </section>
     </main>

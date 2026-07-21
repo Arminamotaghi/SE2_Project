@@ -10,12 +10,18 @@ import { useNavigate } from "react-router-dom";
 import { getMyTickets } from "../api/ticketApi";
 import "./TicketsPage.css";
 
-function normalizeTickets(responseData) {
+function normalizeTickets(
+  responseData
+) {
   if (Array.isArray(responseData)) {
     return responseData;
   }
 
-  if (Array.isArray(responseData?.tickets)) {
+  if (
+    Array.isArray(
+      responseData?.tickets
+    )
+  ) {
     return responseData.tickets;
   }
 
@@ -23,47 +29,90 @@ function normalizeTickets(responseData) {
 }
 
 function getTicketId(ticket) {
-  return ticket.ticket_id ?? ticket.id;
+  return (
+    ticket?.ticket_id ??
+    ticket?.id ??
+    ticket?.unique_code
+  );
 }
 
-function getQrValue(ticket) {
-  return String(
-    ticket.qr_token ??
-    ticket.qr_code ??
-    ticket.validation_token ??
-    getTicketId(ticket)
+function formatTicketDate(ticket) {
+  const dateValue =
+    ticket?.starts_at ??
+    ticket?.event_date ??
+    ticket?.event?.starts_at;
+
+  if (!dateValue) {
+    return "Date not specified";
+  }
+
+  const parsedDate = new Date(
+    dateValue
   );
+
+  if (
+    Number.isNaN(
+      parsedDate.getTime()
+    )
+  ) {
+    return String(dateValue);
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }
+  ).format(parsedDate);
 }
 
 function TicketsPage() {
   const navigate = useNavigate();
 
-  const [tickets, setTickets] = useState([]);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [tickets, setTickets] =
+    useState([]);
 
-  const loadTickets = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage("");
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
 
-    try {
-      const responseData = await getMyTickets();
+  const [isLoading, setIsLoading] =
+    useState(true);
 
-      setTickets(normalizeTickets(responseData));
-    } catch (error) {
-      const detail = axios.isAxiosError(error)
-        ? error.response?.data?.detail
-        : null;
+  const loadTickets = useCallback(
+    async () => {
+      setIsLoading(true);
+      setErrorMessage("");
 
-      setErrorMessage(
-        typeof detail === "string"
-          ? detail
-          : "Could not load your tickets."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+      try {
+        const responseData =
+          await getMyTickets();
+
+        setTickets(
+          normalizeTickets(
+            responseData
+          )
+        );
+      } catch (error) {
+        const detail =
+          axios.isAxiosError(error)
+            ? error.response?.data
+                ?.detail
+            : null;
+
+        setErrorMessage(
+          typeof detail === "string"
+            ? detail
+            : "Could not load your tickets."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     loadTickets();
@@ -74,7 +123,9 @@ function TicketsPage() {
       <header className="tickets-toolbar">
         <button
           type="button"
-          onClick={() => navigate("/events")}
+          onClick={() =>
+            navigate("/events")
+          }
         >
           Browse Events
         </button>
@@ -92,9 +143,14 @@ function TicketsPage() {
       <section className="tickets-container">
         <div className="tickets-heading">
           <p>Digital Wallet</p>
-          <h1>Your event tickets</h1>
+
+          <h1>
+            Your event tickets
+          </h1>
+
           <span>
-            Present the QR Code at the venue entrance.
+            Present the QR Code at the
+            venue entrance.
           </span>
         </div>
 
@@ -110,88 +166,133 @@ function TicketsPage() {
           </div>
         )}
 
-        {!isLoading && tickets.length === 0 && (
-          <div className="tickets-empty">
-            <strong>No tickets found</strong>
+        {!isLoading &&
+          tickets.length === 0 && (
+            <div className="tickets-empty">
+              <strong>
+                No tickets found
+              </strong>
 
-            <button
-              type="button"
-              onClick={() => navigate("/events")}
-            >
-              Find an Event
-            </button>
-          </div>
-        )}
+              <button
+                type="button"
+                onClick={() =>
+                  navigate("/events")
+                }
+              >
+                Find an Event
+              </button>
+            </div>
+          )}
 
         <div className="tickets-grid">
-          {tickets.map((ticket) => {
-            const ticketId = getTicketId(ticket);
+          {tickets.map(
+            (ticket, index) => {
+              const ticketId =
+                getTicketId(ticket);
 
-            return (
-              <article
-                key={ticketId}
-                className="ticket-card"
-              >
-                <div className="ticket-information">
-                  <p className="ticket-label">
-                    ADMISSION TICKET
-                  </p>
+              const uniqueCode =
+                ticket.unique_code;
 
-                  <h2>
-                    {ticket.event_title ??
-                      ticket.event?.title ??
-                      "Event Ticket"}
-                  </h2>
+              return (
+                <article
+                  key={
+                    ticketId ??
+                    `ticket-${index}`
+                  }
+                  className="ticket-card"
+                >
+                  <div className="ticket-information">
+                    <p className="ticket-label">
+                      ADMISSION TICKET
+                    </p>
 
-                  <dl>
-                    <div>
-                      <dt>Seat</dt>
-                      <dd>
-                        {ticket.seat_id ??
-                          ticket.seat_number}
-                      </dd>
-                    </div>
+                    <h2>
+                      {ticket.event_title ??
+                        ticket.event?.title ??
+                        "Event Ticket"}
+                    </h2>
 
-                    <div>
-                      <dt>Venue</dt>
-                      <dd>
-                        {ticket.venue ??
-                          ticket.event?.venue ??
-                          "Not specified"}
-                      </dd>
-                    </div>
+                    <dl>
+                      <div>
+                        <dt>Seat</dt>
 
-                    <div>
-                      <dt>Ticket ID</dt>
-                      <dd>{ticketId}</dd>
-                    </div>
+                        <dd>
+                          {ticket.seat_id ??
+                            ticket.seat_number ??
+                            "Not specified"}
+                        </dd>
+                      </div>
 
-                    <div>
-                      <dt>Status</dt>
-                      <dd>
-                        {ticket.status ?? "VALID"}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
+                      <div>
+                        <dt>Venue</dt>
 
-                <div className="ticket-qr-section">
-                  <div className="ticket-qr">
-                    <QRCodeSVG
-                      value={getQrValue(ticket)}
-                      size={150}
-                      level="H"
-                      bgColor="#ffffff"
-                      fgColor="#050b14"
-                      marginSize={2}
-                    />
+                        <dd>
+                          {ticket.venue ??
+                            ticket.event
+                              ?.venue ??
+                            "Not specified"}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>Date</dt>
+
+                        <dd>
+                          {formatTicketDate(
+                            ticket
+                          )}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>Ticket ID</dt>
+
+                        <dd>
+                          {ticketId ??
+                            "Not specified"}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>Status</dt>
+
+                        <dd>
+                          {ticket.status ??
+                            "VALID"}
+                        </dd>
+                      </div>
+                    </dl>
                   </div>
 
-                  <span>Scan at entrance</span>
-                </div>
-              </article>
-            );
-          })}
+                  <div className="ticket-qr-section">
+                    {uniqueCode ? (
+                      <>
+                        <div className="ticket-qr">
+                          <QRCodeSVG
+                            value={String(
+                              uniqueCode
+                            )}
+                            size={200}
+                            level="H"
+                            bgColor="#ffffff"
+                            fgColor="#050b14"
+                          />
+                        </div>
+
+                        <span>
+                          Scan at entrance
+                        </span>
+                      </>
+                    ) : (
+                      <span>
+                        QR code unavailable
+                      </span>
+                    )}
+                  </div>
+                </article>
+              );
+            }
+          )}
         </div>
       </section>
     </main>

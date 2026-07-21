@@ -18,27 +18,41 @@ const INITIAL_FORM = {
 function CreateEventPage() {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState(
-    INITIAL_FORM
-  );
-  const [errorMessage, setErrorMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] =
+    useState(INITIAL_FORM);
 
-  const updateField = (fieldName, value) => {
-    setFormData((currentData) => ({
-      ...currentData,
-      [fieldName]: value,
-    }));
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState("");
+
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] = useState(false);
+
+  const updateField = (
+    fieldName,
+    value
+  ) => {
+    setFormData(
+      (currentData) => ({
+        ...currentData,
+        [fieldName]: value,
+      })
+    );
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleSubmit = async (
+    submitEvent
+  ) => {
+    submitEvent.preventDefault();
 
     if (
       !formData.title.trim() ||
       !formData.venue.trim() ||
       !formData.startsAt ||
-      !formData.price ||
+      formData.price === "" ||
       !formData.totalSeats
     ) {
       setErrorMessage(
@@ -47,37 +61,71 @@ function CreateEventPage() {
       return;
     }
 
+    const price = Number(
+      formData.price
+    );
+
+    const totalSeats = Number(
+      formData.totalSeats
+    );
+
+    if (
+      !Number.isFinite(price) ||
+      price < 0
+    ) {
+      setErrorMessage(
+        "Enter a valid event price."
+      );
+      return;
+    }
+
+    if (
+      !Number.isInteger(totalSeats) ||
+      totalSeats < 1
+    ) {
+      setErrorMessage(
+        "Enter a valid number of seats."
+      );
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMessage("");
 
     try {
-      const responseData = await createEvent({
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        venue: formData.venue.trim(),
-        starts_at: new Date(
-          formData.startsAt
-        ).toISOString(),
-        price: Number(formData.price),
-        total_seats: Number(
-          formData.totalSeats
-        ),
-        image_url:
-          formData.imageUrl.trim() || null,
-      });
+      const responseData =
+        await createEvent({
+          title:
+            formData.title.trim(),
+          description:
+            formData.description.trim(),
+          venue:
+            formData.venue.trim(),
+          starts_at: new Date(
+            formData.startsAt
+          ).toISOString(),
+          price,
+          total_seats: totalSeats,
+          image_url:
+            formData.imageUrl.trim() ||
+            null,
+        });
 
       const createdEvent =
-        responseData.event ?? responseData;
+        responseData?.event ??
+        responseData;
 
-      const eventId =
-        createdEvent.event_id ??
-        createdEvent.id;
+      const createdEventId =
+        createdEvent?.event_id ??
+        createdEvent?.id;
 
       navigate(
-        eventId
-          ? `/events/${eventId}/seats`
+        createdEventId
+          ? `/events/${createdEventId}`
           : "/events",
-        { replace: true }
+        {
+          replace: true,
+        }
       );
     } catch (error) {
       if (
@@ -85,12 +133,14 @@ function CreateEventPage() {
         error.response?.status === 403
       ) {
         setErrorMessage(
-          "Only organizers can create events."
+          "Only organizers and administrators can create events."
         );
       } else {
-        const detail = axios.isAxiosError(error)
-          ? error.response?.data?.detail
-          : null;
+        const detail =
+          axios.isAxiosError(error)
+            ? error.response?.data
+                ?.detail
+            : null;
 
         setErrorMessage(
           typeof detail === "string"
@@ -108,21 +158,32 @@ function CreateEventPage() {
       <header className="create-event-toolbar">
         <button
           type="button"
-          onClick={() => navigate("/events")}
+          onClick={() =>
+            navigate("/events")
+          }
         >
           Back to Events
         </button>
 
-        <strong>Organizer Panel</strong>
+        <strong>
+          Organizer Panel
+        </strong>
       </header>
 
       <section className="create-event-card">
         <div className="create-event-heading">
-          <p>Organizer Workspace</p>
-          <h1>Create a new event</h1>
+          <p>
+            Organizer Workspace
+          </p>
+
+          <h1>
+            Create a new event
+          </h1>
+
           <span>
-            Add the event information and make it
-            available for ticket booking.
+            Add the event information
+            and make it available for
+            booking.
           </span>
         </div>
 
@@ -160,7 +221,9 @@ function CreateEventPage() {
           <textarea
             id="event-description"
             rows="5"
-            value={formData.description}
+            value={
+              formData.description
+            }
             onChange={(event) =>
               updateField(
                 "description",
@@ -198,7 +261,9 @@ function CreateEventPage() {
               <input
                 id="event-date"
                 type="datetime-local"
-                value={formData.startsAt}
+                value={
+                  formData.startsAt
+                }
                 onChange={(event) =>
                   updateField(
                     "startsAt",
@@ -241,7 +306,9 @@ function CreateEventPage() {
                 type="number"
                 min="1"
                 max="500"
-                value={formData.totalSeats}
+                value={
+                  formData.totalSeats
+                }
                 onChange={(event) =>
                   updateField(
                     "totalSeats",

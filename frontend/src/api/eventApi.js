@@ -1,5 +1,9 @@
 import apiClient from "./apiClient";
 
+function encodeId(value) {
+  return encodeURIComponent(String(value));
+}
+
 export async function getEvents() {
   const response = await apiClient.get("/events");
 
@@ -8,7 +12,7 @@ export async function getEvents() {
 
 export async function getEvent(eventId) {
   const response = await apiClient.get(
-    `/events/${encodeURIComponent(eventId)}`
+    `/events/${encodeId(eventId)}`
   );
 
   return response.data;

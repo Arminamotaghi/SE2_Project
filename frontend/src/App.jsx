@@ -18,42 +18,36 @@ import TicketsPage from "./pages/TicketsPage";
 import "./App.css";
 
 function App() {
-  const {
-    isAuthenticated,
-    isAdmin,
-  } = useAuth();
+  const { isAuthenticated } =
+    useAuth();
 
   return (
     <Routes>
       <Route
         path="/login"
         element={
-          isAuthenticated
-            ? (
-              <Navigate
-                to={
-                  isAdmin
-                    ? "/admin"
-                    : "/events"
-                }
-                replace
-              />
-            )
-            : <Login />
+          isAuthenticated ? (
+            <Navigate
+              to="/events"
+              replace
+            />
+          ) : (
+            <Login />
+          )
         }
       />
 
       <Route
         path="/register"
         element={
-          isAuthenticated
-            ? (
-              <Navigate
-                to="/events"
-                replace
-              />
-            )
-            : <Register />
+          isAuthenticated ? (
+            <Navigate
+              to="/events"
+              replace
+            />
+          ) : (
+            <Register />
+          )
         }
       />
 
@@ -67,7 +61,7 @@ function App() {
       />
 
       <Route
-        path="/events/:eventId/seats"
+        path="/events/:id"
         element={
           <ProtectedRoute>
             <EventSeatsPage />
@@ -76,7 +70,7 @@ function App() {
       />
 
       <Route
-        path="/tickets"
+        path="/my-tickets"
         element={
           <ProtectedRoute>
             <TicketsPage />
@@ -85,7 +79,7 @@ function App() {
       />
 
       <Route
-        path="/organizer/events/new"
+        path="/organizer/create"
         element={
           <OrganizerRoute>
             <CreateEventPage />
