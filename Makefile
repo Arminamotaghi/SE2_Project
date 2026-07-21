@@ -9,8 +9,6 @@ build:
 
 setup:
 	docker compose up -d --build
-	@echo "Waiting for services to be ready..."
-	sleep 15
 	$(MAKE) init
 	$(MAKE) seed
 	@echo "✅ Everything is set up!"

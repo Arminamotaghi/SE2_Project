@@ -1,7 +1,7 @@
 import pika
 import json
 import models
-import traceback 
+import traceback
 
 from config import settings
 from database import SessionLocal
@@ -10,32 +10,33 @@ from redis_client import redis_client
 
 def process_payment_message(ch, method, properties, body):
     data = json.loads(body)
-    seat_id = data.get("seat_id")
-    print(f"Received booking for seat: {seat_id}")
+    seat_id = data.get("seat_id")          
+    event_id = data.get("event_id")        
+    print(f"Received booking for event {event_id}, seat: {seat_id}")
 
     db = SessionLocal()
     try:
         seat_number = int(seat_id.split("-")[-1])
-        print(f"Looking for seat number: {seat_number}")
 
         seat = db.query(models.Seat).filter(
-            models.Seat.seat_number == seat_number
+            models.Seat.seat_number == seat_number,
+            models.Seat.event_id == event_id
         ).first()
 
         if seat:
-            print(f"Found seat in DB: {seat.id}") 
+            print(f"Found seat in DB: {seat.id}")
             seat.status = models.SeatStatus.BOOKED
             db.commit()
             print(f"Seat {seat_id} marked as BOOKED.")
 
-            from redis_client import redis_client
-            redis_client.delete(f"seat_lock:{seat_id.lower()}")
-            print(f"Redis lock released for {seat_id}.")
+            lock_key = f"seat_lock:{str(event_id).lower()}:{seat_id.lower()}"
+            redis_client.delete(lock_key)
+            print(f"Redis lock released: {lock_key}")
         else:
-            print(f"Seat {seat_id} NOT FOUND in database!")
+            print(f"Seat {seat_id} in event {event_id} NOT FOUND!")
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
-        print(f"Message acknowledged.")  
+        print("Message acknowledged.")
 
     except Exception as e:
         print(f"Error: {e}")

@@ -1,39 +1,29 @@
 import json
-
 import pika
-
 from config import settings
 
 
 def publish_payment_success(
     reservation_id: str,
+    event_id: str,
     seat_id: str,
     user_id: str,
 ) -> bool:
     connection = None
-
     try:
         connection = pika.BlockingConnection(
-            pika.ConnectionParameters(
-                host=settings.RABBITMQ_HOST,
-            )
+            pika.ConnectionParameters(host=settings.RABBITMQ_HOST)
         )
-
         channel = connection.channel()
+        channel.queue_declare(queue="payment_success_queue", durable=True)
 
-        channel.queue_declare(
-            queue="payment_success_queue",
-            durable=True,
-        )
-
-        message_body = json.dumps(
-            {
-                "reservation_id": reservation_id,
-                "seat_id": seat_id,
-                "user_id": user_id,
-                "status": "PAID",
-            }
-        )
+        message_body = json.dumps({
+            "reservation_id": reservation_id,
+            "event_id": event_id,
+            "seat_id": seat_id,
+            "user_id": user_id,
+            "status": "PAID",
+        })
 
         channel.basic_publish(
             exchange="",
@@ -44,7 +34,6 @@ def publish_payment_success(
                 content_type="application/json",
             ),
         )
-
         return True
 
     except Exception as error:

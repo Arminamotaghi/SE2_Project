@@ -17,8 +17,9 @@ from schema import (
     SeatStatusResponse,
 )
 
-from reservation_service import try_lock_seat, release_seat, get_seat_status, get_lock_owner
+from reservation_service import try_lock_seat, release_seat, get_lock_owner
 from auth import router as auth_router, get_current_user, require_admin
+from events import router as events_router
 
 from database import get_db
 from sqlalchemy.orm import Session
@@ -28,6 +29,7 @@ tags_metadata = [
     {"name": "System", "description": "System health operations."},
     {"name": "Seats", "description": "Seat locking and status operations."},
     {"name": "Checkout", "description": "Payment operations."},
+    {"name": "Events", "description": "Event catalog operations."},
 ]
 
 app = FastAPI(
@@ -38,6 +40,7 @@ app = FastAPI(
 )
 
 app.include_router(auth_router)
+app.include_router(events_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -54,13 +57,14 @@ async def health_check() -> dict[str, str]:
 
 
 @app.post(
-    "/seats/lock",
+    "/events/{event_id}/seats/lock",
     response_model=SeatActionResponse,
     tags=["Seats"],
-    summary="Lock seats",
+    summary="Lock seats for an event",
     responses={status.HTTP_409_CONFLICT: {"model": ErrorResponse}},
 )
 def lock_seats(
+    event_id: str,
     payload: SeatActionRequest,
     current_user: models.User = Depends(get_current_user),
 ):
@@ -69,7 +73,7 @@ def lock_seats(
     conflicting_seats = []
 
     for seat_id in payload.seat_ids:
-        success = try_lock_seat(seat_id, user_id)
+        success = try_lock_seat(event_id, seat_id, user_id)
         if success:
             locked_seats.append(seat_id)
         else:
@@ -77,7 +81,7 @@ def lock_seats(
 
     if conflicting_seats:
         for seat_id in locked_seats:
-            release_seat(seat_id, user_id)
+            release_seat(event_id, seat_id, user_id)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="The following seats are unavailable: " + ", ".join(conflicting_seats),
@@ -91,13 +95,14 @@ def lock_seats(
 
 
 @app.post(
-    "/seats/release",
+    "/events/{event_id}/seats/release",
     response_model=SeatActionResponse,
     tags=["Seats"],
     summary="Release seats",
     responses={status.HTTP_403_FORBIDDEN: {"model": ErrorResponse}},
 )
 def release_seats(
+    event_id: str,
     payload: SeatActionRequest,
     current_user: models.User = Depends(get_current_user),
 ):
@@ -106,7 +111,7 @@ def release_seats(
     forbidden_seats = []
 
     for seat_id in payload.seat_ids:
-        success = release_seat(seat_id, user_id)
+        success = release_seat(event_id, seat_id, user_id)
         if success:
             released_seats.append(seat_id)
         else:
@@ -125,8 +130,13 @@ def release_seats(
     )
 
 
-@app.get("/seats/status", response_model=SeatStatusResponse, tags=["Seats"])
+@app.get(
+    "/events/{event_id}/seats/status",
+    response_model=SeatStatusResponse,
+    tags=["Seats"],
+)
 def get_seats_status(
+    event_id: str,
     seat_ids: list[str] = Query(...),
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -138,7 +148,8 @@ def get_seats_status(
         seat_number = int(seat_id.split("-")[-1])
 
         db_seat = db.query(models.Seat).filter(
-            models.Seat.seat_number == seat_number
+            models.Seat.seat_number == seat_number,
+            models.Seat.event_id == event_id
         ).first()
 
         if db_seat and db_seat.status == models.SeatStatus.BOOKED:
@@ -147,7 +158,7 @@ def get_seats_status(
             )
             continue
 
-        owner = get_lock_owner(seat_id)
+        owner = get_lock_owner(event_id, seat_id)
 
         if owner is None:
             seat_state = SeatState.AVAILABLE
@@ -164,7 +175,7 @@ def get_seats_status(
 
 
 @app.post(
-    "/checkout/pay",
+    "/events/{event_id}/checkout/pay",
     response_model=CheckoutPaymentResponse,
     tags=["Checkout"],
     summary="Process checkout payment",
@@ -174,9 +185,8 @@ def get_seats_status(
         status.HTTP_503_SERVICE_UNAVAILABLE: {"model": ErrorResponse},
     },
 )
-
-@app.post("/checkout/pay", response_model=CheckoutPaymentResponse, tags=["Checkout"])
 async def checkout_pay(
+    event_id: str,
     payload: CheckoutPaymentRequest,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -187,7 +197,8 @@ async def checkout_pay(
         seat_number = int(seat_id.split("-")[-1])
 
         db_seat = db.query(models.Seat).filter(
-            models.Seat.seat_number == seat_number
+            models.Seat.seat_number == seat_number,
+            models.Seat.event_id == event_id
         ).first()
         if db_seat and db_seat.status == models.SeatStatus.BOOKED:
             raise HTTPException(
@@ -195,7 +206,7 @@ async def checkout_pay(
                 detail=f"Seat {seat_id} is already booked.",
             )
 
-        owner = get_lock_owner(seat_id)
+        owner = get_lock_owner(event_id, seat_id)
         if owner is None:
             raise HTTPException(
                 status_code=409,
@@ -209,7 +220,7 @@ async def checkout_pay(
 
     for seat_id in payload.seat_ids:
         published = await run_in_threadpool(
-            publish_payment_success, "N/A", seat_id, user_id
+            publish_payment_success, "N/A", event_id, seat_id, user_id
         )
         if not published:
             raise HTTPException(
@@ -219,11 +230,12 @@ async def checkout_pay(
 
     return CheckoutPaymentResponse(
         message=f"Payment processed for {len(payload.seat_ids)} seats.",
-        seat_id=", ".join(payload.seat_ids),  
+        seat_id=", ".join(payload.seat_ids),
         user_id=user_id,
         reservation_id="N/A",
         status=PaymentStatus.PAID,
     )
+
 
 @app.get("/admin/dashboard", tags=["Admin"])
 def admin_dashboard(
@@ -237,9 +249,9 @@ def admin_dashboard(
     available_seats = total_seats - booked_seats
 
     return {
-        "total_seats": total_seats,       
-        "booked_seats": booked_seats,     
+        "total_seats": total_seats,
+        "booked_seats": booked_seats,
         "available_seats": available_seats,
-        "revenue": booked_seats * 150,    
-        "occupancy_rate": round(booked_seats / total_seats * 100, 1) if total_seats else 0,  # آرمینا این را می‌خواند
+        "revenue": booked_seats * 150,
+        "occupancy_rate": round(booked_seats / total_seats * 100, 1) if total_seats else 0,
     }
