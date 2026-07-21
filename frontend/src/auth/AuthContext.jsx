@@ -43,8 +43,8 @@ export function AuthProvider({ children }) {
 
     const returnedRole = normalizeRole(
       responseData?.role ??
-      responseData?.user?.role ??
-      "customer"
+        responseData?.user?.role ??
+        "customer"
     );
 
     const returnedUsername =
@@ -52,9 +52,20 @@ export function AuthProvider({ children }) {
       responseData?.user?.username ??
       submittedUsername;
 
-    localStorage.setItem(AUTHENTICATED_KEY, "true");
-    localStorage.setItem(USERNAME_KEY, returnedUsername);
-    localStorage.setItem(ROLE_KEY, returnedRole);
+    localStorage.setItem(
+      AUTHENTICATED_KEY,
+      "true"
+    );
+
+    localStorage.setItem(
+      USERNAME_KEY,
+      returnedUsername
+    );
+
+    localStorage.setItem(
+      ROLE_KEY,
+      returnedRole
+    );
 
     setUsername(returnedUsername);
     setRole(returnedRole);
@@ -67,9 +78,17 @@ export function AuthProvider({ children }) {
     try {
       await logoutUser();
     } finally {
-      localStorage.removeItem(AUTHENTICATED_KEY);
-      localStorage.removeItem(USERNAME_KEY);
-      localStorage.removeItem(ROLE_KEY);
+      localStorage.removeItem(
+        AUTHENTICATED_KEY
+      );
+
+      localStorage.removeItem(
+        USERNAME_KEY
+      );
+
+      localStorage.removeItem(
+        ROLE_KEY
+      );
 
       setUsername("");
       setRole("customer");
@@ -79,12 +98,17 @@ export function AuthProvider({ children }) {
 
   const isAdmin = role === "admin";
 
+  const isOrganizer =
+    role === "organizer" ||
+    role === "admin";
+
   const value = useMemo(
     () => ({
       isAuthenticated,
       username,
       role,
       isAdmin,
+      isOrganizer,
       login,
       logout,
     }),
@@ -93,6 +117,7 @@ export function AuthProvider({ children }) {
       username,
       role,
       isAdmin,
+      isOrganizer,
     ]
   );
 
