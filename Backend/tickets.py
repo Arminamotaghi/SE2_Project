@@ -21,35 +21,6 @@ class TicketResponse(BaseModel):
     is_used: bool
 
 
-@router.get("/my", response_model=list[TicketResponse])
-def get_my_tickets(
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    tickets = (
-        db.query(models.Ticket)
-        .join(models.Seat, models.Ticket.seat_id == models.Seat.id)
-        .join(models.Event, models.Seat.event_id == models.Event.id)
-        .all()
-    )
-
-    result = []
-    for t in tickets:
-        seat = db.query(models.Seat).filter(models.Seat.id == t.seat_id).first()
-        event = db.query(models.Event).filter(models.Event.id == seat.event_id).first()
-        result.append(
-            TicketResponse(
-                unique_code=t.unique_code,
-                seat_number=seat.seat_number,
-                row_name=seat.row_name,
-                section_name=seat.section_name,
-                event_title=event.title,
-                is_used=t.is_used,
-            )
-        )
-    return result
-
-
 @router.post("/validate/{unique_code}")
 def validate_ticket(
     unique_code: str,
