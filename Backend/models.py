@@ -18,6 +18,7 @@ class SeatStatus(str, enum.Enum):
 class UserRole(str, enum.Enum):
     ADMIN = "ADMIN"
     CUSTOMER = "CUSTOMER"
+    ORGANIZER = "ORGANIZER"
 
 
 class User(Base):
@@ -39,7 +40,6 @@ class Venue(Base):
     address = Column(String, nullable=False)
     total_capacity = Column(Integer, nullable=False)
 
-    seats = relationship("Seat", back_populates="venue")
     events = relationship("Event", back_populates="venue")
 
 
@@ -48,25 +48,27 @@ class Event(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     venue_id = Column(UUID(as_uuid=True), ForeignKey("venues.id"))
+    organizer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     title = Column(String(200), nullable=False)
+    description = Column(String, nullable=True)
     start_time = Column(DateTime(timezone=True), nullable=False)
     is_active = Column(Boolean, default=True)
 
     venue = relationship("Venue", back_populates="events")
-
+    seats = relationship("Seat", back_populates="event")
 
 class Seat(Base):
     __tablename__ = "seats"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    venue_id = Column(UUID(as_uuid=True), ForeignKey("venues.id"))
+    event_id = Column(UUID(as_uuid=True), ForeignKey("events.id"))
     section_name = Column(String(10), nullable=False)
     row_name = Column(String(10), nullable=False)
     seat_number = Column(Integer, nullable=False)
     price = Column(Numeric(10, 2), nullable=False)
     status = Column(Enum(SeatStatus), default=SeatStatus.AVAILABLE)
 
-    venue = relationship("Venue", back_populates="seats")
+    event = relationship("Event", back_populates="seats")
 
 
 class Reservation(Base):
@@ -78,3 +80,13 @@ class Reservation(Base):
     seat_id = Column(UUID(as_uuid=True), ForeignKey("seats.id"))
     status = Column(String(20), default="PENDING")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class Ticket(Base):
+    __tablename__ = "tickets"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    reservation_id = Column(UUID(as_uuid=True), ForeignKey("reservations.id"))
+    seat_id = Column(UUID(as_uuid=True), ForeignKey("seats.id"))
+    unique_code = Column(String, unique=True, nullable=False)
+    issued_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_used = Column(Boolean, default=False)
